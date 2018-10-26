@@ -87,11 +87,9 @@ variables {t : topological_space ℝ}
 
 --TODO: classification of interval
 
-
 def interval (i : set ℝ) : Prop := ∀ (x y z : ℝ), x ∈ i → z ∈ i → x ≤ y → y ≤ z → y ∈ i
 def bounded_above (i : set ℝ) : Prop := ∃x, ∀y, y ∈ i → y ≤ x
 
-#check (@subtype_connected_iff_subset_connected ℝ i t).mpr
 
 theorem sup_in_closed {i : set ℝ} (_ : is_closed i) (_ : bounded_above i) :  real.Sup i ∈ i := sorry
 
@@ -123,10 +121,15 @@ assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ �
                ... = Iab             : inter_eq_self_of_subset_right (subset.trans ‹Iab ⊆ i› ‹i ⊆ s₁ ∪ s₂›)),
   let z := real.Sup s₁' in
   have is_closed s₁', from sorry,
-  have bounded_above s₁', from sorry,
-    --⟨b,
-    --(assume y,
-    -- assume y ∈ s₁', )⟩
+  have bounded_above s₁', from
+    ⟨b,
+    (assume y,
+    assume : y ∈ s₁',
+    have s₁' ⊆ Iab, from ‹s₁' ∪ s₂' = Iab› ▸ subset_union_left s₁' s₂',
+    have y ∈ Iab, from mem_of_subset_of_mem ‹s₁' ⊆ Iab› ‹y ∈ s₁'›,
+    show y ≤ b, from and.right $ mem_def.mp ‹y ∈ Iab›
+    )⟩,
+  have z ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bounded_above s₁'›,
   show false, from sorry
 
 end real
