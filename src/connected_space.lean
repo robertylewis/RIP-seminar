@@ -11,7 +11,7 @@ universes u v
 section connected
 variables {α: Type u} {β : Type v} {a : α} {b : β} {s s₁ s₂ : set α} {r r₁ r₂ : set β} {f : α → β}
 
-variables [t : topological_space α]
+variables [topological_space α]
 variables [t' : topological_space β]
 
 lemma preimage_empty_of_empty {f : α → β} {r : set β} (hf : surjective f): f⁻¹' r = ∅ → r = ∅ :=
@@ -74,9 +74,79 @@ assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
   show false, from connected_space.connected α
     ⟨s₁, s₂, ‹is_open s₁›, ‹is_open s₂›, ‹s₁ ≠ ∅›, ‹s₂ ≠ ∅›, ‹s₁ ∩ s₂ = ∅›, ‹s₁ ∪ s₂ = univ›⟩
 
+def disconnected_subset (s : set α) : Prop :=
+∃s₁ s₂ : set α, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂
 
-theorem subtype_connected_iff_subset_connected {α} {s : set α} [topological_space α] :
-connected_space s ↔ (¬∃s₁ s₂ : set α, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ = ∅ ∧ s ⊆ s₁ ∪ s₂) := sorry
+def connected_subset (s : set α) : Prop :=
+¬(disconnected_subset s)
+
+lemma set_is_univ_as_subtype (s : set α) : @univ s = (subtype.val) ⁻¹' s :=
+sorry
+
+lemma subtype_val_univ_is_set (s : set α) : (subtype.val) '' (@univ s) = s :=
+sorry
+
+lemma range_subtype_val_is_set (s : set α) : range (@subtype.val α s) = s :=
+sorry
+
+theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
+suffices (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s, from sorry,
+let lift := @subtype.val α s in
+iff.intro
+  (assume h : ∃ s₁ s₂ : set s, separation s₁ s₂,
+   let ⟨s₁, s₂, _, _, _, _, _, _⟩ := h in
+   have ∃ s₁' : set α, is_open s₁' ∧ s₁ = (lift) ⁻¹' s₁', from ‹is_open s₁›,
+   let ⟨s₁', _, _⟩ := this in
+   have ∃ s₂' : set α, is_open s₂' ∧ s₂ = (lift) ⁻¹' s₂', from ‹is_open s₂›,
+   let ⟨s₂', _, _⟩ := this in
+   have s₁' ∩ s ≠ ∅, from
+     (assume _ : s₁' ∩ s = ∅,
+      have s₁ = ∅, from
+        (calc
+            s₁ = s₁ ∩ univ : eq.symm (inter_univ s₁)
+           ... = ((lift) ⁻¹' s₁') ∩ univ : by rw ‹s₁ = (lift) ⁻¹' s₁'›
+           ... = ((lift) ⁻¹' s₁') ∩ ((lift) ⁻¹' s) : by rw set_is_univ_as_subtype
+           ... = (lift) ⁻¹' (s₁' ∩ s) : eq.symm preimage_inter
+           ... = (lift) ⁻¹' ∅ : by rw ‹s₁' ∩ s = ∅›
+           ... = ∅ : preimage_empty
+        ),
+      show false, from ‹s₁ ≠ ∅› ‹s₁ = ∅›
+     ),
+   have s₂' ∩ s ≠ ∅, from
+     (assume _ : s₂' ∩ s = ∅,
+      have s₂ = ∅, from
+        (calc
+            s₂ = s₂ ∩ univ : eq.symm (inter_univ s₂)
+           ... = ((lift) ⁻¹' s₂') ∩ univ : by rw ‹s₂ = (lift) ⁻¹' s₂'›
+           ... = ((lift) ⁻¹' s₂') ∩ ((lift) ⁻¹' s) : by rw set_is_univ_as_subtype
+           ... = (lift) ⁻¹' (s₂' ∩ s) : eq.symm preimage_inter
+           ... = (lift) ⁻¹' ∅ : by rw ‹s₂' ∩ s = ∅›
+           ... = ∅ : preimage_empty
+        ),
+      show false, from ‹s₂ ≠ ∅› ‹s₂ = ∅›
+     ),
+   have s₁' ∩ s₂' ∩ s = ∅, from
+     (calc
+        s₁' ∩ s₂' ∩ s = s₁' ∩ s₂' ∩ (range lift) : by rw (range_subtype_val_is_set s)
+                   ... = lift '' (lift ⁻¹' (s₁' ∩ s₂')) : by rw image_preimage_eq_inter_range
+                   ... = lift '' ((lift ⁻¹' s₁') ∩ (lift ⁻¹' s₂')) : by rw preimage_inter
+                   ... = lift '' (s₁ ∩ s₂) : by rw [‹s₁ = lift ⁻¹' s₁'›, ‹s₂ = lift ⁻¹' s₂'›]
+                   ... = lift '' ∅ : by {rw [‹s₁ ∩ s₂ = ∅›]; refl}
+                   ... = ∅ : image_empty lift
+     ),
+   have s ⊆ s₁' ∪ s₂', from
+     (calc
+          s = lift '' (univ) : by rw (subtype_val_univ_is_set s)
+        ... = lift '' (s₁ ∪ s₂) : by rw ‹s₁ ∪ s₂ = univ›
+        ... = lift '' s₁ ∪ lift '' s₂ : by rw image_union
+        ... = (lift '' (lift ⁻¹' s₁')) ∪ (lift '' (lift ⁻¹' s₂')) : by rw [‹s₁ = lift ⁻¹' s₁'›, ‹s₂ = lift ⁻¹' s₂'›]
+        ... ⊆ s₁' ∪ s₂' : union_subset_union (image_preimage_subset lift s₁') (image_preimage_subset lift s₂')
+     ),
+   show ∃s₁ s₂ : set α, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂,
+   from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ∩ s ≠ ∅›, ‹s₂' ∩ s ≠ ∅›, ‹s₁' ∩ s₂' ∩ s = ∅›, ‹s ⊆ s₁' ∪ s₂'›⟩
+  )
+  (sorry
+  )
 
 end connected
 
