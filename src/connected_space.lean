@@ -54,25 +54,29 @@ have he2 : -s₁ = s₂, from eq.symm (sep_neg (trans (inter_comm s₂ s₁) hce
 class connected_space (α) [topological_space α] : Prop :=
 (connected : ¬∃ s₁ s₂ : set α, separation s₁ s₂)
 
-
+/-- The image of a connected space under a surjective map is connected. -/
 theorem im_connected {α β} {f : α → β} [topological_space α] [topological_space β] [connected_space α]
   (_ : continuous f) (_ : surjective f) : connected_space β :=
 connected_space.mk $
+-- a space is connected if there exists no separation, so we assume there is one and derive false
+-- we do this by constructing a 'preimage separation'
 assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
+  -- supose we have a separation r₁ ∪ r₂ = β
   let ⟨r₁, r₂, _, _, _, _, _, _⟩ := ‹∃ r₁ r₂ : set β, separation r₁ r₂› in
+  -- we claim that then (s₁=f⁻¹r₁) ∪ (s₂=f⁻¹r₂) is a separation of α
   let s₁ := f⁻¹' r₁, s₂ := f⁻¹' r₂ in
+  -- we now need to show that s_i are open, disjoint, nonempty, and span α
   have is_open s₁, from ‹continuous f› r₁ ‹is_open r₁›,
   have is_open s₂, from ‹continuous f› r₂ ‹is_open r₂›,
   have s₁ ≠ ∅, from preimage_ne_empty_of_ne_empty ‹surjective f› ‹r₁ ≠ ∅›,
   have s₂ ≠ ∅, from preimage_ne_empty_of_ne_empty ‹surjective f› ‹r₂ ≠ ∅›,
-  have _, from
-  calc s₁ ∩ s₂ = f⁻¹' (r₁ ∩ r₂) : by simp
-           ... = ∅              : by rw [‹r₁ ∩ r₂ = ∅›]; exact preimage_empty,
-  have _, from
-  calc s₁ ∪ s₂ = f⁻¹' (r₁ ∪ r₂) : by simp
-           ... =  univ          : by rw [‹r₁ ∪ r₂ = univ›]; exact preimage_univ,
+  have s₁ ∩ s₂ = ∅, by rw ←(@preimage_empty α β f); rw ←‹r₁ ∩ r₂ = ∅›; simp,
+  have s₁ ∪ s₂ = univ, by rw ←(@preimage_univ α β f); rw ←‹r₁ ∪ r₂ = univ›; simp,
+  -- with this preparation at hand, we construct a separation
+  have separation s₁ s₂, from ⟨‹is_open s₁›, ‹is_open s₂›, ‹s₁ ≠ ∅›, ‹s₂ ≠ ∅›, ‹s₁ ∩ s₂ = ∅›, ‹s₁ ∪ s₂ = univ›⟩,
+  -- which contradicts the fact that α is connected
   show false, from connected_space.connected α
-    ⟨s₁, s₂, ‹is_open s₁›, ‹is_open s₂›, ‹s₁ ≠ ∅›, ‹s₂ ≠ ∅›, ‹s₁ ∩ s₂ = ∅›, ‹s₁ ∪ s₂ = univ›⟩
+    ⟨s₁, s₂, ‹separation s₁ s₂›⟩
 
 def disconnected_subset (s : set α) : Prop :=
 ∃s₁ s₂ : set α, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂
