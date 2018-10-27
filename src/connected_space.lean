@@ -159,8 +159,47 @@ variables {t : topological_space ℝ}
 
 def interval (i : set ℝ) : Prop := ∀ (x y z : ℝ), x ∈ i → z ∈ i → x ≤ y → y ≤ z → y ∈ i
 
+def has_max (S : set ℝ) : Prop := ∃ max ∈ S, ∀ x ∈ S, x ≤ max
 
-theorem sup_in_closed {i : set ℝ} (_ : is_closed i) (_ : bounded_above i) :  real.Sup i ∈ i := sorry
+/- A closed subset of ℝ that is bounded from above has a maximum. -/
+lemma has_max_of_closed_bdd_above {S : set ℝ} (_ : is_closed S) (_ : bdd_above S) (_ : S ≠ ∅) : has_max S :=
+-- a set that is bounded from above has a supremum
+-- if that supremum is contained in the set, it is the maximum
+have ∃ sup, ∀ bound, sup ≤ bound ↔ ∀ x ∈ S, x ≤ bound, from
+  real.exists_sup S (set.exists_mem_of_ne_empty ‹S ≠ ∅›) ‹bdd_above S›,
+let ⟨sup, bound_iff_ge_sup⟩ := this in
+suffices sup ∈ S, from exists.intro sup ⟨‹sup ∈ S›, (bound_iff_ge_sup sup).mp (le_refl sup)⟩,
+classical.by_contradiction
+  -- we now show that the supremum is contained in the set
+  -- for that we use that, since -S is open, sup ∈ -S implies that there is a metric ball around it that's not in S
+  -- anything left of the supremum will be smaller than the sup, but still bound S
+  -- this contradicts the assumptions
+  (assume : sup ∉ S, show false, from
+    have ∃ ε > 0, ball sup ε ⊆ -S, from is_open_metric.mp ‹is_open (-S)› sup ‹sup ∈ -S›,
+    let ⟨ε, _, _⟩ := this in
+      suffices ∀ x ∈ S, x ≤ sup - ε, from
+        have ¬(sup ≤ sup - ε), from not_le_of_lt (show sup - ε < sup, by linarith),
+        have (sup ≤ sup - ε), from ((bound_iff_ge_sup (sup - ε)).mpr ‹∀ x ∈ S, x ≤ sup - ε›),
+        absurd this ‹¬(sup ≤ sup - ε)›,
+      assume x (_ : x ∈ S),
+      classical.by_contradiction
+        (assume : ¬ x ≤ sup - ε, 
+          have x ≤ sup, from (bound_iff_ge_sup sup).mp (le_refl sup) x ‹x ∈ S›,
+          have 0 ≤ sup - x, by linarith,
+          have dist x sup < ε, from 
+            calc dist x sup = abs (sup - x) : by rw[dist_comm x sup]; refl
+                        ... = sup - x : abs_of_nonneg ‹0 ≤ sup - x›
+                        ... < ε : by linarith,
+          have x ∈ -S, from mem_of_subset_of_mem ‹ball sup ε ⊆ -S› ‹x ∈ ball sup ε›,
+          absurd ‹x ∈ S› ‹x ∈ -S›))
+
+lemma sup_in_closed {S : set ℝ} (_ : is_closed S) (_ : bdd_above S) (_ : S ≠ ∅) : real.Sup S ∈ S :=
+have has_max S, from has_max_of_closed_bdd_above ‹is_closed S› ‹bdd_above S› ‹S ≠ ∅›,
+let ⟨max, (_ : max ∈ S), max_upper_bound⟩ := this in
+have max ≤ real.Sup S, from real.le_Sup S ‹bdd_above S› ‹max ∈ S›,
+have real.Sup S ≤ max, from (real.Sup_le S (set.exists_mem_of_ne_empty ‹S ≠ ∅›) ‹bdd_above S›).mpr max_upper_bound,
+have max = real.Sup S, from le_antisymm ‹max ≤ real.Sup S› ‹real.Sup S ≤ max›,
+show real.Sup S ∈ S, from ‹max = real.Sup S› ▸ ‹max ∈ S› 
 
 instance interval_connected {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
@@ -198,7 +237,7 @@ assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ �
     have y ∈ Iab, from mem_of_subset_of_mem ‹s₁' ⊆ Iab› ‹y ∈ s₁'›,
     show y ≤ b, from and.right $ mem_def.mp ‹y ∈ Iab›
     )⟩,
-  have z ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'›,
+  have z ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› sorry,
   show false, from sorry
 
 end real
