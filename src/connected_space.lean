@@ -207,8 +207,8 @@ show real.Sup S ∈ S, from ‹max = real.Sup S› ▸ ‹max ∈ S›
 
 instance interval_connected {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
-assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ i ≠ ∅ ∧ s₂ ∩ i ≠ ∅ ∧ s₁ ∩ s₂ = ∅ ∧ i ⊆ s₁ ∪ s₂,
-  let ⟨s₁, s₂, _, _, _, _, _, _, _, _⟩ := h in
+assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ i ≠ ∅ ∧ s₂ ∩ i ≠ ∅ ∧ s₁ ∩ s₂ ∩ i = ∅ ∧ i ⊆ s₁ ∪ s₂,
+  let ⟨s₁, s₂, _, _, _, _, _, _⟩ := h in
   let ⟨a, _⟩ := exists_mem_of_ne_empty ‹s₁ ∩ i ≠ ∅›, ⟨b, _⟩ := exists_mem_of_ne_empty ‹s₂ ∩ i ≠ ∅› in
   have a ∈ s₁, from mem_of_mem_inter_left ‹a ∈ s₁ ∩ i›,
   have a ∈ i, from mem_of_mem_inter_right ‹a ∈ s₁ ∩ i›,
@@ -216,8 +216,8 @@ assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ �
   have b ∈ i, from mem_of_mem_inter_right ‹b ∈ s₂ ∩ i›,
   have a ≠ b, from
     (assume _ : a = b,
-    have b ∈ s₁ ∩ s₂, from mem_inter (‹a = b› ▸ ‹a ∈ s₁›) ‹b ∈ s₂›,
-    show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ = ∅› b ‹b ∈ s₁ ∩ s₂›
+    have b ∈ s₁ ∩ s₂ ∩ i, from mem_inter (mem_inter (‹a = b› ▸ ‹a ∈ s₁›) ‹b ∈ s₂›) ‹b ∈ i›,
+    show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ ∩ i = ∅› b ‹b ∈ s₁ ∩ s₂ ∩ i›
     ),
   have a < b, from sorry, --use suffices? (wlog)
   let Iab := {x | a ≤ x ∧ x ≤ b } in
@@ -225,13 +225,13 @@ assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ �
     (suffices (∀x, x ∈ Iab → x ∈ i), by simpa only [subset_def],
     assume x,
     assume _ : x ∈ Iab, 
-    have hab : a ≤ x ∧ x ≤ b, from eq.mp mem_set_of_eq ‹x ∈ Iab›,
+    have hab : a ≤ x ∧ x ≤ b, from mem_set_of_eq.mp ‹x ∈ Iab›,
     show x ∈ i, from ‹interval i› a x b ‹a ∈ i› ‹b ∈ i› hab.1 hab.2),
   let s₁' := s₁ ∩ Iab, s₂' := s₂ ∩ Iab in
   have s₁' ∪ s₂' = Iab, from
   (calc  s₁' ∪ s₂' = (s₁ ∪ s₂) ∩ Iab : eq.symm (inter_distrib_right s₁ s₂ Iab)
                ... = Iab             : inter_eq_self_of_subset_right (subset.trans ‹Iab ⊆ i› ‹i ⊆ s₁ ∪ s₂›)),
-  let z := real.Sup s₁' in
+  let sup := real.Sup s₁' in
   have is_closed s₁', from sorry,
   have bdd_above s₁', from
     ⟨b,
@@ -241,7 +241,31 @@ assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ �
     have y ∈ Iab, from mem_of_subset_of_mem ‹s₁' ⊆ Iab› ‹y ∈ s₁'›,
     show y ≤ b, from and.right $ mem_def.mp ‹y ∈ Iab›
     )⟩,
-  have z ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› sorry,
-  show false, from sorry
-
+  have s₁' ≠ ∅, from ne_empty_of_mem (mem_inter ‹a ∈ s₁› (mem_set_of_eq.mpr ⟨le_refl a, le_of_lt ‹a < b›⟩)),
+  have sup ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› ‹s₁' ≠ ∅›,
+  have sup ≤ b, from sorry, --(let ⟨b, h⟩ := bdd in h z ‹z ∈ s₁'›),
+  let Isupb := {x | sup ≤ x ∧ x ≤ b } in
+  let s₂'' := s₂' ∩ Isupb in
+  let inf := real.Inf s₂'' in
+  have inf ∈ s₂'', from sorry,
+  have sup < inf, from sorry,
+  let z := (sup + inf) / 2 in
+  have sup < z, from sorry,
+  have inf > z, from sorry,
+  let Isi := {x | sup < x ∧ x < inf} in
+  have z ∈ Isi, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
+  have z ∉ s₁ ∪ s₂, from sorry, --union_def.mpr (nmem_set_of_eq.mpr 
+  have sup ∈ i, from sorry,
+  have inf ∈ i, from sorry,
+  have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
+  have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
+  show false, from mem_union.elim ‹z ∈ s₁ ∪ s₂›
+    (assume _ : z ∈ s₁,
+    have z ∈ s₁', from sorry,
+    have z ≤ sup, from real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
+    show false, from not_lt_of_le ‹z ≤ sup› ‹sup < z›)
+    (assume _ : z ∈ s₂,
+    have z ∈ s₂', from sorry,
+    have z ≥ inf, from sorry, --real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
+    show false, from not_le_of_gt ‹inf > z› ‹inf ≤ z›)
 end real
