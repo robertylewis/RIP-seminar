@@ -84,17 +84,43 @@ def disconnected_subset (s : set α) : Prop :=
 def connected_subset (s : set α) : Prop :=
 ¬(disconnected_subset s)
 
-lemma set_is_univ_as_subtype (s : set α) : @univ s = (subtype.val) ⁻¹' s :=
-sorry
+lemma range_subtype_val_is_set (s : set α) : range (@subtype.val α s) = s :=
+subtype_val_range
 
 lemma subtype_val_univ_is_set (s : set α) : (subtype.val) '' (@univ s) = s :=
-sorry
+calc
+  subtype.val '' (@univ s) = range subtype.val : image_univ
+                       ... = s                 : subtype_val_range
 
-lemma range_subtype_val_is_set (s : set α) : range (@subtype.val α s) = s :=
-sorry
+lemma set_is_univ_as_subtype (s : set α) : @univ s = (subtype.val) ⁻¹' s :=
+let lift := @subtype.val α s in
+have @univ s ⊆ lift ⁻¹' s, from
+  (assume x : s,
+   assume _ : x ∈ @univ s,
+   have lift x ∈ range lift, from ⟨x, eq.refl (lift x)⟩,
+   have lift x ∈ s, from (range_subtype_val_is_set s) ▸ ‹lift x ∈ range lift›,
+   show x ∈ lift ⁻¹' s, from ‹lift x ∈ s›
+  ),
+have lift ⁻¹' s ⊆ @univ s, from subset_univ (lift ⁻¹' s),
+show @univ s = (subtype.val) ⁻¹' s, from eq_of_subset_of_subset ‹@univ s ⊆ lift ⁻¹' s› ‹lift ⁻¹' s ⊆ @univ s›
+
+#check connected_space.
 
 theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
-suffices (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s, from sorry,
+suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s, from
+  (iff.intro
+     (assume h : connected_space s,
+      assume _ : disconnected_subset s,
+      show false, from (@connected_space.connected s subtype.topological_space h) (h₀.mpr ‹disconnected_subset s›)
+     )
+     (assume h : connected_subset s,
+      have ¬∃ s₁ s₂ : set s, separation s₁ s₂, from
+        (assume h₁ : ∃ s₁ s₂ : set s, separation s₁ s₂,
+         show false, from h (h₀.mp h₁)
+        ),
+      show connected_space s, from ⟨‹¬∃ s₁ s₂ : set s, separation s₁ s₂›⟩
+     )
+  ),
 let lift := @subtype.val α s in
 iff.intro
   (assume h : ∃ s₁ s₂ : set s, separation s₁ s₂,
@@ -149,8 +175,54 @@ iff.intro
    show ∃s₁ s₂ : set α, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂,
    from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ∩ s ≠ ∅›, ‹s₂' ∩ s ≠ ∅›, ‹s₁' ∩ s₂' ∩ s = ∅›, ‹s ⊆ s₁' ∪ s₂'›⟩
   )
-  (sorry
+  (assume h : disconnected_subset s,
+   let ⟨s₁, s₂, _, _, _, _, _, _⟩ := h in
+   let s₁' := lift ⁻¹' s₁ in
+   let s₂' := lift ⁻¹' s₂ in
+   have is_open s₁', from ⟨s₁, ‹is_open s₁›, eq.refl s₁'⟩,
+   have is_open s₂', from ⟨s₂, ‹is_open s₂›, eq.refl s₂'⟩,
+   have s₁' ≠ ∅, from
+     (assume _ : s₁' = ∅,
+      have s₁ ∩ s = ∅, from
+        calc
+         s₁ ∩ s = s₁ ∩ (range lift) : by rw range_subtype_val_is_set
+            ... = lift '' s₁' : eq.symm (@image_preimage_eq_inter_range s α lift s₁)
+            ... = lift '' ∅ : by rw ‹s₁' = ∅›
+            ... = ∅ : image_empty lift,
+      show false, from ‹s₁ ∩ s ≠ ∅› ‹s₁ ∩ s = ∅›
+     ), 
+   have s₂' ≠ ∅, from
+     (assume _ : s₂' = ∅,
+      have s₂ ∩ s = ∅, from
+        calc
+         s₂ ∩ s = s₂ ∩ (range lift) : by rw range_subtype_val_is_set
+            ... = lift '' s₂' : eq.symm (@image_preimage_eq_inter_range s α lift s₂)
+            ... = lift '' ∅ : by rw ‹s₂' = ∅›
+            ... = ∅ : image_empty lift,
+      show false, from ‹s₂ ∩ s ≠ ∅› ‹s₂ ∩ s = ∅›
+     ),
+   have s₁' ∩ s₂' = ∅, from
+     calc
+      s₁' ∩ s₂' = s₁' ∩ s₂' ∩ univ : eq.symm (inter_univ (s₁' ∩ s₂'))
+            ... = (lift ⁻¹' s₁) ∩ (lift ⁻¹' s₂) ∩ (lift ⁻¹' s) : by rw (eq.symm (set_is_univ_as_subtype s))
+            ... = lift ⁻¹' (s₁ ∩ s₂ ∩ s) : by simp only [preimage_inter]
+            ... = lift ⁻¹' ∅ : by rw ‹s₁ ∩ s₂ ∩ s = ∅›
+            ... = ∅ : preimage_empty,
+   have s₁' ∪ s₂' = univ, from
+     (have s₁' ∪ s₂' ⊆ univ, from subset_univ (s₁' ∪ s₂'),
+      have univ ⊆ s₁' ∪ s₂', from
+        calc
+         univ = lift ⁻¹' s : by rw set_is_univ_as_subtype
+          ... ⊆ lift ⁻¹' (s₁ ∪ s₂) : preimage_mono ‹s ⊆ s₁ ∪ s₂›
+          ... = (lift ⁻¹' s₁) ∪ (lift ⁻¹' s₂) : by rw preimage_union
+          ... = s₁' ∪ s₂' : rfl,
+      show s₁' ∪ s₂' = univ, from eq_of_subset_of_subset ‹s₁' ∪ s₂' ⊆ univ› ‹univ ⊆ s₁' ∪ s₂'›
+     ),
+   show ∃ s₁ s₂ : set s, separation s₁ s₂,
+     from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ≠ ∅›, ‹s₂' ≠ ∅›, ‹s₁' ∩ s₂' = ∅›, ‹s₁' ∪ s₂' = univ›⟩
   )
+
+#check @image_preimage_eq_inter_range
 
 end connected
 
