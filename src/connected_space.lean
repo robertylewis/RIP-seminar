@@ -1,10 +1,13 @@
 import analysis.topology.topological_space
 import analysis.topology.continuity
+import analysis.topology.topological_structures
 import data.set.basic
 import analysis.real
+import tactic.wlog
 
 open set
 open function
+open tactic
 
 universes u v
 
@@ -231,6 +234,7 @@ section real
 variables {i: set ℝ} {s₁ s₂: set ℝ}
 variables {t : topological_space ℝ}
 
+
 --TODO: classification of interval
 
 def interval (i : set ℝ) : Prop := ∀ (x y z : ℝ), x ∈ i → z ∈ i → x ≤ y → y ≤ z → y ∈ i
@@ -277,9 +281,44 @@ have real.Sup S ≤ max, from (real.Sup_le S (set.exists_mem_of_ne_empty ‹S �
 have max = real.Sup S, from le_antisymm ‹max ≤ real.Sup S› ‹real.Sup S ≤ max›,
 show real.Sup S ∈ S, from ‹max = real.Sup S› ▸ ‹max ∈ S› 
 
+lemma mem_iff_neg_mem {S : set ℝ} {x : ℝ} : -x ∈ S ↔ x ∈ {y | -y ∈ S} :=
+by rw mem_set_of_eq
+
+lemma bdd_above_iff_neg_bdd_below {S : set ℝ} : bdd_below S ↔ bdd_above {x | -x ∈ S} :=
+iff.intro
+  (assume ⟨y, h⟩, --S is bounded from below by y
+    ⟨-y,
+    assume x,
+    assume _ : x ∈ {x | -x ∈ S},
+    have -x ∈ S, from mem_iff_neg_mem.mpr ‹x ∈ {y | -y ∈ S}›,
+    neg_neg x ▸ neg_le_neg (h (-x) ‹-x ∈ S›)⟩)
+  (assume ⟨y, h⟩, --{x | -x ∈ S} is bounded from above by y
+    ⟨-y,
+    assume x,
+    assume _ : x ∈ S,
+    have -x ∈ {x | -x ∈ S}, by simp [‹x ∈ S›], --how to do this by def?
+    neg_neg x ▸ neg_le_neg (h (-x) ‹-x ∈ {x | -x ∈ S}›)⟩)
+
+#check ne_empty_iff_exists_mem.mp
+
+lemma neg_closed {S : set ℝ} (_ : is_closed S) : is_closed {x | -x ∈ S} :=
+let neg := λ (x : ℝ), -x in
+have continuous neg, from topological_ring.continuous_neg ℝ,
+show is_closed (neg ⁻¹' S), from continuous_iff_is_closed.mp ‹continuous neg› S ‹is_closed S›
+
+lemma inf_in_closed {S : set ℝ} (_ : is_closed S) (_ : bdd_below S) (_ : S ≠ ∅) : real.Inf S ∈ S :=
+let neg := λ (x : ℝ), -x in
+let ⟨x, h⟩ := ne_empty_iff_exists_mem.mp ‹S ≠ ∅› in
+have {x | -x ∈ S} ≠ ∅, from ne_empty_iff_exists_mem.mpr ⟨-x, mem_iff_neg_mem.mp (eq.symm (neg_neg x) ▸ h)⟩,
+sup_in_closed
+  (neg_closed ‹is_closed S›)
+  (bdd_above_iff_neg_bdd_below.mp ‹bdd_below S›)
+  ‹{x | -x ∈ S} ≠ ∅›
+
+
 instance interval_connected {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
-assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ i ≠ ∅ ∧ s₂ ∩ i ≠ ∅ ∧ s₁ ∩ s₂ ∩ i = ∅ ∧ i ⊆ s₁ ∪ s₂,
+assume h : disconnected_subset i,
   let ⟨s₁, s₂, _, _, _, _, _, _⟩ := h in
   let ⟨a, _⟩ := exists_mem_of_ne_empty ‹s₁ ∩ i ≠ ∅›, ⟨b, _⟩ := exists_mem_of_ne_empty ‹s₂ ∩ i ≠ ∅› in
   have a ∈ s₁, from mem_of_mem_inter_left ‹a ∈ s₁ ∩ i›,
@@ -289,55 +328,67 @@ assume h : ∃s₁ s₂ : set ℝ, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ i 
   have a ≠ b, from
     (assume _ : a = b,
     have b ∈ s₁ ∩ s₂ ∩ i, from mem_inter (mem_inter (‹a = b› ▸ ‹a ∈ s₁›) ‹b ∈ s₂›) ‹b ∈ i›,
-    show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ ∩ i = ∅› b ‹b ∈ s₁ ∩ s₂ ∩ i›
-    ),
-  have a < b, from sorry, --use suffices? (wlog)
-  let Iab := {x | a ≤ x ∧ x ≤ b } in
-  have Iab ⊆ i, from
-    (suffices (∀x, x ∈ Iab → x ∈ i), by simpa only [subset_def],
-    assume x,
-    assume _ : x ∈ Iab, 
-    have hab : a ≤ x ∧ x ≤ b, from mem_set_of_eq.mp ‹x ∈ Iab›,
-    show x ∈ i, from ‹interval i› a x b ‹a ∈ i› ‹b ∈ i› hab.1 hab.2),
-  let s₁' := s₁ ∩ Iab, s₂' := s₂ ∩ Iab in
-  have s₁' ∪ s₂' = Iab, from
-  (calc  s₁' ∪ s₂' = (s₁ ∪ s₂) ∩ Iab : eq.symm (inter_distrib_right s₁ s₂ Iab)
-               ... = Iab             : inter_eq_self_of_subset_right (subset.trans ‹Iab ⊆ i› ‹i ⊆ s₁ ∪ s₂›)),
-  let sup := real.Sup s₁' in
-  have is_closed s₁', from sorry,
-  have bdd_above s₁', from
-    ⟨b,
-    (assume y,
-    assume : y ∈ s₁',
-    have s₁' ⊆ Iab, from ‹s₁' ∪ s₂' = Iab› ▸ subset_union_left s₁' s₂',
-    have y ∈ Iab, from mem_of_subset_of_mem ‹s₁' ⊆ Iab› ‹y ∈ s₁'›,
-    show y ≤ b, from and.right $ mem_def.mp ‹y ∈ Iab›
-    )⟩,
-  have s₁' ≠ ∅, from ne_empty_of_mem (mem_inter ‹a ∈ s₁› (mem_set_of_eq.mpr ⟨le_refl a, le_of_lt ‹a < b›⟩)),
-  have sup ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› ‹s₁' ≠ ∅›,
-  have sup ≤ b, from sorry, --(let ⟨b, h⟩ := bdd in h z ‹z ∈ s₁'›),
-  let Isupb := {x | sup ≤ x ∧ x ≤ b } in
-  let s₂'' := s₂' ∩ Isupb in
-  let inf := real.Inf s₂'' in
-  have inf ∈ s₂'', from sorry,
-  have sup < inf, from sorry,
-  let z := (sup + inf) / 2 in
-  have sup < z, from sorry,
-  have inf > z, from sorry,
-  let Isi := {x | sup < x ∧ x < inf} in
-  have z ∈ Isi, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
-  have z ∉ s₁ ∪ s₂, from sorry, --union_def.mpr (nmem_set_of_eq.mpr 
-  have sup ∈ i, from sorry,
-  have inf ∈ i, from sorry,
-  have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
-  have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
-  show false, from mem_union.elim ‹z ∈ s₁ ∪ s₂›
-    (assume _ : z ∈ s₁,
-    have z ∈ s₁', from sorry,
-    have z ≤ sup, from real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
-    show false, from not_lt_of_le ‹z ≤ sup› ‹sup < z›)
-    (assume _ : z ∈ s₂,
-    have z ∈ s₂', from sorry,
-    have z ≥ inf, from sorry, --real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
-    show false, from not_le_of_gt ‹inf > z› ‹inf ≤ z›)
+    show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ ∩ i = ∅› b ‹b ∈ s₁ ∩ s₂ ∩ i›),
+  begin
+    --wlog : a < b using [a b, b a],
+    --exact ne_iff_lt_or_gt.mp ‹a ≠ b›,
+    exact
+      have a < b, from sorry, --wlog
+      let Iab := {x | a ≤ x ∧ x ≤ b } in
+      have Iab ⊆ i, from
+        (suffices (∀x, x ∈ Iab → x ∈ i), by simpa only [subset_def],
+        assume x,
+        assume _ : x ∈ Iab, 
+        have hab : a ≤ x ∧ x ≤ b, from mem_set_of_eq.mp ‹x ∈ Iab›,
+        show x ∈ i, from ‹interval i› a x b ‹a ∈ i› ‹b ∈ i› hab.1 hab.2),
+      let s₁' := s₁ ∩ Iab, s₂' := s₂ ∩ Iab in
+      have s₁' ∪ s₂' = Iab, from
+        (calc  s₁' ∪ s₂' = (s₁ ∪ s₂) ∩ Iab : eq.symm (inter_distrib_right s₁ s₂ Iab)
+                    ... = Iab             : inter_eq_self_of_subset_right (subset.trans ‹Iab ⊆ i› ‹i ⊆ s₁ ∪ s₂›)),
+      let sup := real.Sup s₁' in
+      have is_closed s₁', from sorry,
+      have bdd_above s₁', from
+        ⟨b,
+        (assume y,
+        assume : y ∈ s₁',
+        have s₁' ⊆ Iab, from ‹s₁' ∪ s₂' = Iab› ▸ subset_union_left s₁' s₂',
+        have y ∈ Iab, from mem_of_subset_of_mem ‹s₁' ⊆ Iab› ‹y ∈ s₁'›,
+        show y ≤ b, from and.right $ mem_def.mp ‹y ∈ Iab›
+        )⟩,
+      have s₁' ≠ ∅, from ne_empty_of_mem (mem_inter ‹a ∈ s₁› (mem_set_of_eq.mpr ⟨le_refl a, le_of_lt ‹a < b›⟩)),
+      have sup ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› ‹s₁' ≠ ∅›,
+
+      have sup ≤ b, from sorry, --(let ⟨b, h⟩ := bdd in h z ‹z ∈ s₁'›),
+      let Isupb := {x | sup ≤ x ∧ x ≤ b } in
+      let s₂'' := s₂' ∩ Isupb in
+      let inf := real.Inf s₂'' in
+
+      have is_closed s₂'', from sorry,
+      have bdd_below s₂'', from sorry,
+      have b ∈ s₂', from mem_inter ‹b ∈ s₂› (mem_set_of_eq.mpr ⟨le_of_lt ‹a < b›, le_refl b⟩),
+      have s₂'' ≠ ∅, from ne_empty_of_mem (mem_inter ‹b ∈ s₂'› (mem_set_of_eq.mpr ⟨‹sup ≤ b›, le_refl b⟩)),
+      have inf ∈ s₂'', from inf_in_closed ‹is_closed s₂''› ‹bdd_below s₂''› ‹s₂'' ≠ ∅›,
+
+      have sup < inf, from sorry,
+      let z := (sup + inf) / 2 in
+      have sup < z, from sorry,
+      have inf > z, from sorry,
+      let Isi := {x | sup < x ∧ x < inf} in
+      have z ∈ Isi, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
+      have z ∉ s₁ ∪ s₂, from sorry, --union_def.mpr (nmem_set_of_eq.mpr 
+      have sup ∈ i, from sorry,
+      have inf ∈ i, from sorry,
+      have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
+      have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
+      show false, from mem_union.elim ‹z ∈ s₁ ∪ s₂›
+        (assume _ : z ∈ s₁,
+        have z ∈ s₁', from sorry,
+        have z ≤ sup, from real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
+        not_lt_of_le ‹z ≤ sup› ‹sup < z›)
+        (assume _ : z ∈ s₂,
+        have z ∈ s₂', from sorry,
+        have z ≥ inf, from sorry, --real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
+        not_le_of_gt ‹inf > z› ‹inf ≤ z›)
+  end
+
 end real
