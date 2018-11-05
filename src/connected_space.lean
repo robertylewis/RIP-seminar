@@ -42,16 +42,15 @@ show s₁ = -s₂, from antisymm h3 h4
 def separation [topological_space α] (s₁ s₂ : set α) : Prop :=
 is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ s₂ = ∅ ∧ s₁ ∪ s₂ = univ
 
-/-
-lemma sep_sym {t : topological_space α} {s₁ s₂ : set α} (h : separation t s₁ s₂) : separation t s₂ s₁ :=
+lemma sep_sym {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : separation s₂ s₁ :=
 let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in ⟨ho2, ho1, hne2, hne1, eq.trans (inter_comm s₂ s₁) hce, eq.trans (union_comm s₂ s₁) huu⟩
 
-lemma sep_sets_closed {t : topological_space α} {s₁ s₂ : set α} (h : separation t s₁ s₂) : is_closed s₁ ∧ is_closed s₂ :=
+lemma sep_sets_closed {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : is_closed s₁ ∧ is_closed s₂ :=
 let ⟨ho1, ho2, _, _, hce, huu⟩ := h in
 have he1 : -s₂ = s₁, from eq.symm (sep_neg hce huu),
 have he2 : -s₁ = s₂, from eq.symm (sep_neg (trans (inter_comm s₂ s₁) hce) (trans (union_comm s₂ s₁) huu)),
 ⟨he1 ▸ is_closed_compl_iff.mpr ho2, he2 ▸ is_closed_compl_iff.mpr ho1⟩
--/
+
 
 --Connected topological spaces
 class connected_space (α) [topological_space α] : Prop :=
@@ -106,8 +105,6 @@ have @univ s ⊆ lift ⁻¹' s, from
   ),
 have lift ⁻¹' s ⊆ @univ s, from subset_univ (lift ⁻¹' s),
 show @univ s = (subtype.val) ⁻¹' s, from eq_of_subset_of_subset ‹@univ s ⊆ lift ⁻¹' s› ‹lift ⁻¹' s ⊆ @univ s›
-
-#check connected_space.
 
 theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
 suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s, from
@@ -225,8 +222,6 @@ iff.intro
      from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ≠ ∅›, ‹s₂' ≠ ∅›, ‹s₁' ∩ s₂' = ∅›, ‹s₁' ∪ s₂' = univ›⟩
   )
 
-#check @image_preimage_eq_inter_range
-
 end connected
 
 
@@ -299,7 +294,11 @@ iff.intro
     have -x ∈ {x | -x ∈ S}, by simp [‹x ∈ S›], --how to do this by def?
     neg_neg x ▸ neg_le_neg (h (-x) ‹-x ∈ {x | -x ∈ S}›)⟩)
 
-#check ne_empty_iff_exists_mem.mp
+lemma bdd_above_Icc {a b : ℝ} : bdd_above (Icc a b) :=
+⟨b, by intros; exact (mem_def.mp ‹y ∈ Icc a b›).right⟩
+
+lemma bdd_below_Icc {a b : ℝ} : bdd_below (Icc a b) :=
+⟨a, by intros; exact (mem_def.mp ‹y ∈ Icc a b›).left⟩
 
 lemma neg_closed {S : set ℝ} (_ : is_closed S) : is_closed {x | -x ∈ S} :=
 let neg := λ (x : ℝ), -x in
@@ -315,6 +314,8 @@ sup_in_closed
   (bdd_above_iff_neg_bdd_below.mp ‹bdd_below S›)
   ‹{x | -x ∈ S} ≠ ∅›
 
+lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y := sorry
+--⟨(x + y) / 2, 
 
 instance interval_connected {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
@@ -327,68 +328,87 @@ assume h : disconnected_subset i,
   have b ∈ i, from mem_of_mem_inter_right ‹b ∈ s₂ ∩ i›,
   have a ≠ b, from
     (assume _ : a = b,
-    have b ∈ s₁ ∩ s₂ ∩ i, from mem_inter (mem_inter (‹a = b› ▸ ‹a ∈ s₁›) ‹b ∈ s₂›) ‹b ∈ i›,
+    have b ∈ s₁ ∩ s₂ ∩ i, from ⟨⟨‹a = b› ▸ ‹a ∈ s₁›, ‹b ∈ s₂›⟩, ‹b ∈ i›⟩,
     show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ ∩ i = ∅› b ‹b ∈ s₁ ∩ s₂ ∩ i›),
   begin
     --wlog : a < b using [a b, b a],
     --exact ne_iff_lt_or_gt.mp ‹a ≠ b›,
     exact
-      have a < b, from sorry, --wlog
-      let Iab := {x | a ≤ x ∧ x ≤ b } in
-      have Iab ⊆ i, from
-        (suffices (∀x, x ∈ Iab → x ∈ i), by simpa only [subset_def],
+      have a < b, from sorry, --wlog in
+      have Icc a b ⊆ i, from
+        (suffices (∀x, x ∈ Icc a b → x ∈ i), by simpa only [subset_def],
         assume x,
-        assume _ : x ∈ Iab, 
-        have hab : a ≤ x ∧ x ≤ b, from mem_set_of_eq.mp ‹x ∈ Iab›,
+        assume _ : x ∈ Icc a b, 
+        have hab : a ≤ x ∧ x ≤ b, from mem_set_of_eq.mp ‹x ∈ Icc a b›,
         show x ∈ i, from ‹interval i› a x b ‹a ∈ i› ‹b ∈ i› hab.1 hab.2),
-      let s₁' := s₁ ∩ Iab, s₂' := s₂ ∩ Iab in
-      have s₁' ∪ s₂' = Iab, from
-        (calc  s₁' ∪ s₂' = (s₁ ∪ s₂) ∩ Iab : eq.symm (inter_distrib_right s₁ s₂ Iab)
-                    ... = Iab             : inter_eq_self_of_subset_right (subset.trans ‹Iab ⊆ i› ‹i ⊆ s₁ ∪ s₂›)),
+      let s₁' := s₁ ∩ Icc a b, s₂' := s₂ ∩ Icc a b in
+      have s₁' ∪ s₂' = Icc a b, from
+        (calc  s₁' ∪ s₂' = (s₁ ∪ s₂) ∩ Icc a b : eq.symm (inter_distrib_right s₁ s₂ (Icc a b))
+                     ... = Icc a b             : inter_eq_self_of_subset_right (subset.trans ‹Icc a b ⊆ i› ‹i ⊆ s₁ ∪ s₂›)),
       let sup := real.Sup s₁' in
-      have is_closed s₁', from sorry,
-      have bdd_above s₁', from
-        ⟨b,
-        (assume y,
-        assume : y ∈ s₁',
-        have s₁' ⊆ Iab, from ‹s₁' ∪ s₂' = Iab› ▸ subset_union_left s₁' s₂',
-        have y ∈ Iab, from mem_of_subset_of_mem ‹s₁' ⊆ Iab› ‹y ∈ s₁'›,
-        show y ≤ b, from and.right $ mem_def.mp ‹y ∈ Iab›
-        )⟩,
-      have s₁' ≠ ∅, from ne_empty_of_mem (mem_inter ‹a ∈ s₁› (mem_set_of_eq.mpr ⟨le_refl a, le_of_lt ‹a < b›⟩)),
-      have sup ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› ‹s₁' ≠ ∅›,
+      have is_closed s₁', from
+        (have i ⊆ -s₁ ∪ -s₂, from sorry,
+        have s₂ ∩ s₁' = ∅, from subset_empty_iff.mp
+          (calc s₂ ∩ s₁' ⊆ s₁ ∩ s₂ ∩ i    : by simp [inter_assoc, inter_left_comm, inter_subset_inter_right, ‹Icc a b ⊆ i›]
+                    ... = ∅             : ‹s₁ ∩ s₂ ∩ i = ∅›),
+        have s₁' ⊆ -s₂, from sorry,
+        have s₁' ⊆ s₁, from inter_subset_left s₁ (Icc a b),
+        have (-s₂) ∩ Icc a b = s₁', from sorry,
+        have s₁ ∩ ((-s₂ ∩ Icc a b)) = s₁', from
+          (calc s₁ ∩ ((-s₂) ∩ Icc a b) = (-s₂) ∩ (s₁ ∩ Icc a b) : by simp [inter_left_comm]
+                              ... = (-s₂) ∩ s₁'        : by simp
+                              ... = s₁'                : inter_eq_self_of_subset_right ‹s₁' ⊆ -s₂› 
+          ),
+        have is_open (-(-s₂)), from (eq.symm (compl_compl s₂)) ▸ ‹is_open s₂›,
+        have is_closed (-s₂), from ‹is_open (-(-s₂))›,
+        ‹-s₂ ∩ Icc a b = s₁'› ▸ is_closed_inter ‹is_closed (-s₂)› is_closed_Icc),
+      have is_closed s₂', from sorry,
 
-      have sup ≤ b, from sorry, --(let ⟨b, h⟩ := bdd in h z ‹z ∈ s₁'›),
-      let Isupb := {x | sup ≤ x ∧ x ≤ b } in
-      let s₂'' := s₂' ∩ Isupb in
+      have bdd_above s₁', from bdd_above_Int2 bdd_above_Icc,
+      have s₁' ≠ ∅, from ne_empty_of_mem (⟨‹a ∈ s₁›, mem_set_of_eq.mpr ⟨le_refl a, le_of_lt ‹a < b›⟩⟩),
+      have sup ∈ s₁', from sup_in_closed ‹is_closed s₁'› ‹bdd_above s₁'› ‹s₁' ≠ ∅›,
+      have sup ∈ Icc a b, from mem_of_mem_inter_right ‹sup ∈ s₁'›,
+      have sup ∈ i, from mem_of_subset_of_mem ‹Icc a b ⊆ i› ‹sup ∈ Icc a b›,
+
+      have sup ≤ b, from (mem_def.mp (mem_of_mem_inter_right ‹sup ∈ s₁'›)).2,
+      let s₂'' := s₂' ∩ Icc sup b in
       let inf := real.Inf s₂'' in
 
-      have is_closed s₂'', from sorry,
-      have bdd_below s₂'', from sorry,
-      have b ∈ s₂', from mem_inter ‹b ∈ s₂› (mem_set_of_eq.mpr ⟨le_of_lt ‹a < b›, le_refl b⟩),
-      have s₂'' ≠ ∅, from ne_empty_of_mem (mem_inter ‹b ∈ s₂'› (mem_set_of_eq.mpr ⟨‹sup ≤ b›, le_refl b⟩)),
+      have is_closed s₂'', from is_closed_inter ‹is_closed s₂'› is_closed_Icc,
+      have bdd_below s₂', from bdd_below_Int2 bdd_below_Icc,
+      have bdd_below s₂'', from bdd_below_Int1 ‹bdd_below s₂'›,
+      have b ∈ s₂', from ⟨‹b ∈ s₂›, mem_set_of_eq.mpr ⟨le_of_lt ‹a < b›, le_refl b⟩⟩,
+      have s₂'' ≠ ∅, from ne_empty_of_mem ⟨‹b ∈ s₂'›, mem_set_of_eq.mpr ⟨‹sup ≤ b›, le_refl b⟩⟩,
       have inf ∈ s₂'', from inf_in_closed ‹is_closed s₂''› ‹bdd_below s₂''› ‹s₂'' ≠ ∅›,
+      have inf ∈ Icc a b, from mem_of_mem_inter_right $ mem_of_mem_inter_left ‹inf ∈ s₂''›,
+      have inf ∈ i, from mem_of_subset_of_mem ‹Icc a b ⊆ i› ‹inf ∈ Icc a b›,
 
-      have sup < inf, from sorry,
-      let z := (sup + inf) / 2 in
-      have sup < z, from sorry,
-      have inf > z, from sorry,
-      let Isi := {x | sup < x ∧ x < inf} in
-      have z ∈ Isi, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
+      have sup ≤ inf, from (mem_def.mp (mem_of_mem_inter_right ‹inf ∈ s₂''›)).left,
+      have sup < inf, from lt_of_le_of_ne ‹sup ≤ inf› $ ne.intro
+        (assume _ : sup = inf,
+        have inf ∈ s₁', from ‹sup = inf› ▸ ‹sup ∈ s₁'›,
+        have inf ∈ s₁ ∩ s₂ ∩ i, from ⟨⟨mem_of_mem_inter_left ‹inf ∈ s₁'›, mem_of_mem_inter_left $ mem_of_mem_inter_left ‹inf ∈ s₂''›⟩, ‹inf ∈ i›⟩,
+        show false, from mem_empty_eq inf ▸ ‹s₁ ∩ s₂ ∩ i = ∅› ▸ ‹inf ∈ s₁ ∩ s₂ ∩ i›),
+      
+      let ⟨z, _⟩ := exists_real_between ‹sup < inf› in
+      have sup < z, from ‹sup < z ∧ z < inf›.left,
+      have z < inf, from ‹sup < z ∧ z < inf›.right,
+      have z ∈ Ioo sup inf, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
       have z ∉ s₁ ∪ s₂, from sorry, --union_def.mpr (nmem_set_of_eq.mpr 
-      have sup ∈ i, from sorry,
-      have inf ∈ i, from sorry,
-      have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
+      --have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
+      have z ∈ i, from sorry,
       have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
-      show false, from mem_union.elim ‹z ∈ s₁ ∪ s₂›
+      show false, from ‹z ∉ s₁ ∪ s₂› ‹z ∈ s₁ ∪ s₂›
+
+      /-show false, from mem_union.elim ‹z ∈ s₁ ∪ s₂›
         (assume _ : z ∈ s₁,
         have z ∈ s₁', from sorry,
-        have z ≤ sup, from real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
+        have z ≤ sup, from sorry, --real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
         not_lt_of_le ‹z ≤ sup› ‹sup < z›)
         (assume _ : z ∈ s₂,
         have z ∈ s₂', from sorry,
         have z ≥ inf, from sorry, --real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
-        not_le_of_gt ‹inf > z› ‹inf ≤ z›)
+        not_le_of_gt ‹inf > z› ‹inf ≤ z›)-/
   end
 
 end real
