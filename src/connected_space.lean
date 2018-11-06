@@ -127,21 +127,16 @@ lemma preimage_subtype_val_ne_empty_iff {s : set α} (t : set α) :
   @subtype.val α s ⁻¹' t ≠ ∅ ↔ s ∩ t ≠ ∅ :=
 not_iff_not_of_iff (preimage_subtype_val_empty_iff t)
 
+lemma connected_space_iff : connected_space α ↔ ¬∃ s₁ s₂ : set α, separation s₁ s₂ :=
+begin
+  constructor,
+  apply connected_space.connected,
+  apply connected_space.mk
+end
+
 theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
-suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s, from
-  (iff.intro
-     (assume h : connected_space s,
-      assume _ : disconnected_subset s,
-      show false, from (@connected_space.connected s subtype.topological_space h) (h₀.mpr ‹disconnected_subset s›)
-     )
-     (assume h : connected_subset s,
-      have ¬∃ s₁ s₂ : set s, separation s₁ s₂, from
-        (assume h₁ : ∃ s₁ s₂ : set s, separation s₁ s₂,
-         show false, from h (h₀.mp h₁)
-        ),
-      show connected_space s, from ⟨‹¬∃ s₁ s₂ : set s, separation s₁ s₂›⟩
-     )
-  ),
+suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s,
+  by rw connected_space_iff; apply not_iff_not_of_iff; assumption,
 let lift := @subtype.val α s in
 iff.intro
   (assume h : ∃ s₁ s₂ : set s, separation s₁ s₂,
