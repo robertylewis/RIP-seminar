@@ -236,14 +236,77 @@ iff.intro
 end connected
 
 
+section intervals
+variables {α : Type*} [partial_order α] {i : set α}
+
+/-- an interval is a convex set -/
+def interval (i : set α) : Prop := ∀x y z, x ∈ i → z ∈ i → x ≤ y → y ≤ z → y ∈ i
+
+/-- Left-open right-closed interval -/
+def Ioc (a b : α) := {x | a < x ∧ x ≤ b}
+
+/-- Left-infinite right-open interval -/
+def Iic (a : α) := {x | x ≤ a}
+
+--Classification of bounded above intervals
+
+lemma exists_smaller_of_not_bounded_below {i : set α} (_ : ¬bdd_below i) (x : α) : ∃y∈i, y ≤ x := sorry
+
+theorem bdd_above_interval_iff {i : set α} (_ : bdd_above i) : interval i ↔
+∃b, i = Iic b ∨ i = Iio b ∨ ∃a, i = Icc a b ∨ i = Ioc a b ∨ i = Ico a b ∨ i = Ioo a b :=
+iff.intro
+  (assume _ : interval i,
+  let ⟨b, hb⟩ := ‹bdd_above i› in
+  ⟨b, classical.by_cases
+    (assume _ : bdd_below i, /-left-bounded cases-/
+    let ⟨a, ha⟩ := ‹bdd_below i› in
+    classical.by_cases
+      (assume _ : b ∈ i,
+      classical.by_cases
+        (assume _ : a ∈ i, --left-closed right-closed case
+        have i = Icc a b, from sorry,
+        sorry)
+        (assume _ : a ∉ i, --left-open right-closed case
+        have i = Ioc a b, from sorry,
+        sorry))
+      (assume _ : b ∉ i,
+      classical.by_cases
+        (assume _ : a ∈ i, --left-closed right-open case
+        have i = Ico a b, from sorry,
+        sorry)
+        (assume _ : a ∉ i, --left-open right-open case
+        have i = Ioo a b, from sorry,
+        sorry)))
+    (assume _ : ¬bdd_below i, /-left-infinite cases-/
+    classical.by_cases
+      (assume _ : b ∈ i, --left-infinite right-closed case
+      have i = Iic b, from ext $
+        assume x,
+        let ⟨y, _, _⟩ := exists_smaller_of_not_bounded_below ‹¬bdd_below i› x in
+        iff.intro
+          (assume _ : x ∈ i, hb x ‹x ∈ i›)
+          (assume _ : x ∈ Iic b, ‹interval i› y x b ‹y ∈ i› ‹b ∈ i› ‹y ≤ x› ‹x ∈ Iic b›),
+      by simp [this]) --add the large disjunction
+      (assume _ : b ∉ i, --left-infinite right-open cases
+      have i = Iio b, from ext $
+        assume x,
+        let ⟨y, _, _⟩ := exists_smaller_of_not_bounded_below ‹¬bdd_below i› x in
+        iff.intro
+          (assume _ : x ∈ i,
+          have x ≠ b, from sorry,
+          lt_of_le_of_ne (hb x ‹x ∈ i›) ‹x ≠ b›)
+          (sorry),
+      by simp [this])) --add the large disjunction
+  ⟩)
+  (sorry)
+
+
+end intervals
+
+
 section real
 variables {i: set ℝ} {s₁ s₂: set ℝ}
 variables {t : topological_space ℝ}
-
-
---TODO: classification of interval
-
-def interval (i : set ℝ) : Prop := ∀ (x y z : ℝ), x ∈ i → z ∈ i → x ≤ y → y ≤ z → y ∈ i
 
 def has_max (S : set ℝ) : Prop := ∃ max ∈ S, ∀ x ∈ S, x ≤ max
 
