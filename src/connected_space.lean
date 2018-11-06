@@ -198,6 +198,8 @@ end connected
 
 
 section intervals
+open lattice
+
 variables {α : Type*} [partial_order α] {i : set α}
 
 /-- an interval is a convex set -/
@@ -209,54 +211,78 @@ def Ioc (a b : α) := {x | a < x ∧ x ≤ b}
 /-- Left-infinite right-open interval -/
 def Iic (a : α) := {x | x ≤ a}
 
+/-- Left-open right-infinite interval -/
+def Ioi (b : α) := {x | x < b}
+
 --Classification of bounded above intervals
 
 lemma exists_smaller_of_not_bounded_below {i : set α} (_ : ¬bdd_below i) (x : α) : ∃y∈i, y ≤ x := sorry
 
-theorem bdd_above_interval_iff {i : set α} (_ : bdd_above i) : interval i ↔
+lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y :=
+suffices Ioo x y ≠ ∅, from exists_mem_of_ne_empty this,
+mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < y›)
+
+theorem bdd_above_interval_iff {i : set ℝ} (_ : bdd_above i) : interval i ↔
 ∃b, i = Iic b ∨ i = Iio b ∨ ∃a, i = Icc a b ∨ i = Ioc a b ∨ i = Ico a b ∨ i = Ioo a b :=
 iff.intro
   (assume _ : interval i,
-  let ⟨b, hb⟩ := ‹bdd_above i› in
-  ⟨b, classical.by_cases
+  --let ⟨b, hb⟩ := ‹bdd_above i› in
+  let sup := real.Sup i in
+  ⟨sup, classical.by_cases
     (assume _ : bdd_below i, /-left-bounded cases-/
     let ⟨a, ha⟩ := ‹bdd_below i› in
     classical.by_cases
-      (assume _ : b ∈ i,
+      (assume _ : sup ∈ i,
       classical.by_cases
         (assume _ : a ∈ i, --left-closed right-closed case
-        have i = Icc a b, from sorry,
+        have i = Icc a sup, from sorry,
         sorry)
         (assume _ : a ∉ i, --left-open right-closed case
-        have i = Ioc a b, from sorry,
+        have i = Ioc a sup, from sorry,
         sorry))
-      (assume _ : b ∉ i,
+      (assume _ : sup ∉ i,
       classical.by_cases
         (assume _ : a ∈ i, --left-closed right-open case
-        have i = Ico a b, from sorry,
+        have i = Ico a sup, from sorry,
         sorry)
         (assume _ : a ∉ i, --left-open right-open case
-        have i = Ioo a b, from sorry,
+        have i = Ioo a sup, from sorry,
         sorry)))
     (assume _ : ¬bdd_below i, /-left-infinite cases-/
     classical.by_cases
-      (assume _ : b ∈ i, --left-infinite right-closed case
-      have i = Iic b, from ext $
+      --left-infinite right-closed case
+      (assume _ : sup ∈ i,
+      have i = Iic sup, from ext $
         assume x,
         let ⟨y, _, _⟩ := exists_smaller_of_not_bounded_below ‹¬bdd_below i› x in
         iff.intro
-          (assume _ : x ∈ i, hb x ‹x ∈ i›)
-          (assume _ : x ∈ Iic b, ‹interval i› y x b ‹y ∈ i› ‹b ∈ i› ‹y ≤ x› ‹x ∈ Iic b›),
+          (assume _ : x ∈ i, real.le_Sup i ‹bdd_above i› ‹x ∈ i›)
+          (assume _ : x ∈ Iic sup, ‹interval i› y x sup ‹y ∈ i› ‹sup ∈ i› ‹y ≤ x› ‹x ∈ Iic sup›),
       by simp [this]) --add the large disjunction
-      (assume _ : b ∉ i, --left-infinite right-open cases
-      have i = Iio b, from ext $
+      --left-infinite right-open cases
+      (assume _ : sup ∉ i,
+      have i = Iio sup, from ext $
         assume x,
         let ⟨y, _, _⟩ := exists_smaller_of_not_bounded_below ‹¬bdd_below i› x in
         iff.intro
           (assume _ : x ∈ i,
-          have x ≠ b, from sorry,
-          lt_of_le_of_ne (hb x ‹x ∈ i›) ‹x ≠ b›)
-          (sorry),
+          have x ≠ sup, from assume _ : x = sup, ‹sup ∉ i› $ ‹x = sup› ▸ ‹x ∈ i›,
+          lt_of_le_of_ne (real.le_Sup i ‹bdd_above i› ‹x ∈ i›) ‹x ≠ sup›)
+          (assume _ : x ∈ Iio sup,
+          /-have i ∩ Ioo x sup ≠ ∅, from
+            assume _ : i ∩ Ioo x sup = ∅,
+            let ⟨sup2, _⟩ := exists_real_between ‹x < sup› in
+            have sup2 ∉ i, from 
+            show false, from sorry,-/
+          let ⟨z, _⟩ := exists_mem_of_ne_empty $ mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < sup›) in
+          have z ∈ Ioo x sup, from ‹z ∈ Ioo x sup›,
+          have z ∈ i, from classical.by_cases
+            (assume _ : z ∈ i, ‹z ∈ i›)
+            (assume _ : z ∉ i,
+            have false, from sorry,
+            false.elim ‹false›),
+          have x < z, from ‹z ∈ Ioo x sup›.left,
+          ‹interval i› y x z ‹y ∈ i› ‹z ∈ i› ‹y ≤ x› (le_of_lt ‹x < z›)),
       by simp [this])) --add the large disjunction
   ⟩)
   (sorry)
@@ -348,10 +374,6 @@ sup_in_closed
   (neg_closed ‹is_closed S›)
   (bdd_above_iff_neg_bdd_below.mp ‹bdd_below S›)
   ‹{x | -x ∈ S} ≠ ∅›
-
-lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y :=
-suffices Ioo x y ≠ ∅, from exists_mem_of_ne_empty this,
-mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < y›)
 
 lemma inter_sep_comp_eq {α : Type u} {s s₁ s₂ : set α} (_ : s ∩ s₁ ∩ s₂ = ∅) (_ : s ⊆ s₁ ∪ s₂) : s ∩ s₁ = s ∩ -s₂ :=
 have s ∩ s₁ ⊆ s ∩-s₂, by simpa [subset_compl_iff_disjoint],
@@ -499,5 +521,22 @@ assume h : disconnected_subset i,
         have z ≥ inf, from real.Inf_le s₂'' ‹bdd_below s₂''› ‹z ∈ s₂''›,
         not_le_of_gt ‹inf > z› ‹inf ≤ z›)
   end
+
+lemma is_open_Ioi {b : ℝ} : is_open (Ioi b) := sorry
+
+theorem connected_of_interval {i : set ℝ} [connected_space i] : interval i :=
+by intros x y z _ _ _ _;
+exact
+  --assume x≠y and y≠z
+  classical.by_contradiction
+  (assume _ : y ∉ i,
+  have Iio y ∩ Ioi y ∩ i = ∅, from sorry,
+  have i ⊆ Iio y ∪ Ioi y, from sorry,
+  have Iio y ∩ i ≠ ∅, from sorry, --contains x
+  have Ioi y ∩ i ≠ ∅, from sorry, --contains z
+  have disconnected_subset i, from ⟨Iio y, Ioi y, is_open_Iio, is_open_Ioi, ‹Iio y ∩ i ≠ ∅›, ‹Ioi y ∩ i ≠ ∅›, ‹Iio y ∩ Ioi y ∩ i = ∅›, ‹i ⊆ Iio y ∪ Ioi y›⟩,
+  have ¬connected_space i, by simpa [subtype_connected_iff_subset_connected],
+  this ‹connected_space i›)
+
 
 end real
