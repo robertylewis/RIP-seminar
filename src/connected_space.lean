@@ -107,7 +107,25 @@ have @univ s ⊆ lift ⁻¹' s, from
 have lift ⁻¹' s ⊆ @univ s, from subset_univ (lift ⁻¹' s),
 show @univ s = (subtype.val) ⁻¹' s, from eq_of_subset_of_subset ‹@univ s ⊆ lift ⁻¹' s› ‹lift ⁻¹' s ⊆ @univ s›
 
-#check connected_space.
+lemma image_preimage_subtype_val {s : set α} (t : set α) :
+  subtype.val '' (@subtype.val α s ⁻¹' t) = range (@subtype.val α s) ∩ t :=
+begin
+  rw [image_preimage_eq_inter_range],
+  rw [inter_comm],
+end
+
+lemma preimage_subtype_val_empty_iff {s : set α} (t : set α) :
+  @subtype.val α s ⁻¹' t = ∅ ↔ s ∩ t = ∅ :=
+begin
+  rw [←(range_subtype_val_is_set s)],
+  rw [←(image_preimage_subtype_val t)],
+  rw [range_subtype_val_is_set s],
+  rw [image_eq_empty],
+end
+
+lemma preimage_subtype_val_ne_empty_iff {s : set α} (t : set α) :
+  @subtype.val α s ⁻¹' t ≠ ∅ ↔ s ∩ t ≠ ∅ :=
+not_iff_not_of_iff (preimage_subtype_val_empty_iff t)
 
 theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
 suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s, from
@@ -132,41 +150,12 @@ iff.intro
    let ⟨s₁', _, _⟩ := this in
    have ∃ s₂' : set α, is_open s₂' ∧ s₂ = (lift) ⁻¹' s₂', from ‹is_open s₂›,
    let ⟨s₂', _, _⟩ := this in
-   have s₁' ∩ s ≠ ∅, from
-     (assume _ : s₁' ∩ s = ∅,
-      have s₁ = ∅, from
-        (calc
-            s₁ = s₁ ∩ univ : eq.symm (inter_univ s₁)
-           ... = ((lift) ⁻¹' s₁') ∩ univ : by rw ‹s₁ = (lift) ⁻¹' s₁'›
-           ... = ((lift) ⁻¹' s₁') ∩ ((lift) ⁻¹' s) : by rw set_is_univ_as_subtype
-           ... = (lift) ⁻¹' (s₁' ∩ s) : eq.symm preimage_inter
-           ... = (lift) ⁻¹' ∅ : by rw ‹s₁' ∩ s = ∅›
-           ... = ∅ : preimage_empty
-        ),
-      show false, from ‹s₁ ≠ ∅› ‹s₁ = ∅›
-     ),
-   have s₂' ∩ s ≠ ∅, from
-     (assume _ : s₂' ∩ s = ∅,
-      have s₂ = ∅, from
-        (calc
-            s₂ = s₂ ∩ univ : eq.symm (inter_univ s₂)
-           ... = ((lift) ⁻¹' s₂') ∩ univ : by rw ‹s₂ = (lift) ⁻¹' s₂'›
-           ... = ((lift) ⁻¹' s₂') ∩ ((lift) ⁻¹' s) : by rw set_is_univ_as_subtype
-           ... = (lift) ⁻¹' (s₂' ∩ s) : eq.symm preimage_inter
-           ... = (lift) ⁻¹' ∅ : by rw ‹s₂' ∩ s = ∅›
-           ... = ∅ : preimage_empty
-        ),
-      show false, from ‹s₂ ≠ ∅› ‹s₂ = ∅›
-     ),
-   have s₁' ∩ s₂' ∩ s = ∅, from
-     (calc
-        s₁' ∩ s₂' ∩ s = s₁' ∩ s₂' ∩ (range lift) : by rw (range_subtype_val_is_set s)
-                   ... = lift '' (lift ⁻¹' (s₁' ∩ s₂')) : by rw image_preimage_eq_inter_range
-                   ... = lift '' ((lift ⁻¹' s₁') ∩ (lift ⁻¹' s₂')) : by rw preimage_inter
-                   ... = lift '' (s₁ ∩ s₂) : by rw [‹s₁ = lift ⁻¹' s₁'›, ‹s₂ = lift ⁻¹' s₂'›]
-                   ... = lift '' ∅ : by {rw [‹s₁ ∩ s₂ = ∅›]; refl}
-                   ... = ∅ : image_empty lift
-     ),
+   have s₁' ∩ s ≠ ∅,
+     by rw [←inter_comm, ←preimage_subtype_val_ne_empty_iff, ←‹s₁ = lift ⁻¹' s₁'›]; assumption,
+   have s₂' ∩ s ≠ ∅,
+     by rw [←inter_comm, ←preimage_subtype_val_ne_empty_iff, ←‹s₂ = lift ⁻¹' s₂'›]; assumption,
+   have s₁' ∩ s₂' ∩ s = ∅,
+     by rw [←inter_comm, ←preimage_subtype_val_empty_iff, preimage_inter, ←‹s₁ = lift ⁻¹' s₁'›, ←‹s₂ = lift ⁻¹' s₂'›]; assumption,
    have s ⊆ s₁' ∪ s₂', from
      (calc
           s = lift '' (univ) : by rw (subtype_val_univ_is_set s)
@@ -184,33 +173,12 @@ iff.intro
    let s₂' := lift ⁻¹' s₂ in
    have is_open s₁', from ⟨s₁, ‹is_open s₁›, eq.refl s₁'⟩,
    have is_open s₂', from ⟨s₂, ‹is_open s₂›, eq.refl s₂'⟩,
-   have s₁' ≠ ∅, from
-     (assume _ : s₁' = ∅,
-      have s₁ ∩ s = ∅, from
-        calc
-         s₁ ∩ s = s₁ ∩ (range lift) : by rw range_subtype_val_is_set
-            ... = lift '' s₁' : eq.symm (@image_preimage_eq_inter_range s α lift s₁)
-            ... = lift '' ∅ : by rw ‹s₁' = ∅›
-            ... = ∅ : image_empty lift,
-      show false, from ‹s₁ ∩ s ≠ ∅› ‹s₁ ∩ s = ∅›
-     ), 
-   have s₂' ≠ ∅, from
-     (assume _ : s₂' = ∅,
-      have s₂ ∩ s = ∅, from
-        calc
-         s₂ ∩ s = s₂ ∩ (range lift) : by rw range_subtype_val_is_set
-            ... = lift '' s₂' : eq.symm (@image_preimage_eq_inter_range s α lift s₂)
-            ... = lift '' ∅ : by rw ‹s₂' = ∅›
-            ... = ∅ : image_empty lift,
-      show false, from ‹s₂ ∩ s ≠ ∅› ‹s₂ ∩ s = ∅›
-     ),
-   have s₁' ∩ s₂' = ∅, from
-     calc
-      s₁' ∩ s₂' = s₁' ∩ s₂' ∩ univ : eq.symm (inter_univ (s₁' ∩ s₂'))
-            ... = (lift ⁻¹' s₁) ∩ (lift ⁻¹' s₂) ∩ (lift ⁻¹' s) : by rw (eq.symm (set_is_univ_as_subtype s))
-            ... = lift ⁻¹' (s₁ ∩ s₂ ∩ s) : by simp only [preimage_inter]
-            ... = lift ⁻¹' ∅ : by rw ‹s₁ ∩ s₂ ∩ s = ∅›
-            ... = ∅ : preimage_empty,
+   have s₁' ≠ ∅, 
+     by rw [preimage_subtype_val_ne_empty_iff, inter_comm]; assumption,
+   have s₂' ≠ ∅, 
+     by rw [preimage_subtype_val_ne_empty_iff, inter_comm]; assumption,
+   have s₁' ∩ s₂' = ∅, 
+     by rw [←preimage_inter, preimage_subtype_val_empty_iff, inter_comm]; assumption,
    have s₁' ∪ s₂' = univ, from
      (have s₁' ∪ s₂' ⊆ univ, from subset_univ (s₁' ∪ s₂'),
       have univ ⊆ s₁' ∪ s₂', from
