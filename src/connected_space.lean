@@ -226,8 +226,11 @@ theorem bdd_above_interval_iff {i : set ℝ} (_ : bdd_above i) : interval i ↔
 ∃b, i = Iic b ∨ i = Iio b ∨ ∃a, i = Icc a b ∨ i = Ioc a b ∨ i = Ico a b ∨ i = Ioo a b :=
 iff.intro
   (assume _ : interval i,
-  --let ⟨b, hb⟩ := ‹bdd_above i› in
-  let sup := real.Sup i in
+  have i ≠ ∅, from sorry, --if this is the case, then we can construct it as a bounded interval
+  have ∃ sup, ∀ bound, sup ≤ bound ↔ ∀ x ∈ i, x ≤ bound, from
+    real.exists_sup i (set.exists_mem_of_ne_empty ‹i ≠ ∅›) ‹bdd_above i›,
+  let ⟨sup, bound_iff_ge_sup⟩ := this in
+  have le_sup : ∀ x ∈ i, x ≤ sup, from (bound_iff_ge_sup sup).mp $ le_refl sup,
   ⟨sup, classical.by_cases
     (assume _ : bdd_below i, /-left-bounded cases-/
     let ⟨a, ha⟩ := ‹bdd_below i› in
@@ -256,7 +259,7 @@ iff.intro
         assume x,
         let ⟨y, _, _⟩ := exists_smaller_of_not_bounded_below ‹¬bdd_below i› x in
         iff.intro
-          (assume _ : x ∈ i, real.le_Sup i ‹bdd_above i› ‹x ∈ i›)
+          (assume _ : x ∈ i, le_sup x ‹x ∈ i›)
           (assume _ : x ∈ Iic sup, ‹interval i› y x sup ‹y ∈ i› ‹sup ∈ i› ‹y ≤ x› ‹x ∈ Iic sup›),
       by simp [this]) --add the large disjunction
       --left-infinite right-open cases
@@ -267,22 +270,27 @@ iff.intro
         iff.intro
           (assume _ : x ∈ i,
           have x ≠ sup, from assume _ : x = sup, ‹sup ∉ i› $ ‹x = sup› ▸ ‹x ∈ i›,
-          lt_of_le_of_ne (real.le_Sup i ‹bdd_above i› ‹x ∈ i›) ‹x ≠ sup›)
+          lt_of_le_of_ne (le_sup x ‹x ∈ i›) ‹x ≠ sup›)
           (assume _ : x ∈ Iio sup,
-          /-have i ∩ Ioo x sup ≠ ∅, from
-            assume _ : i ∩ Ioo x sup = ∅,
+          have i ∩ Ioo x sup ≠ ∅, from
+            assume _ : i ∩ Ioo x sup = ∅, --show that a smaller supremum exists
             let ⟨sup2, _⟩ := exists_real_between ‹x < sup› in
-            have sup2 ∉ i, from 
-            show false, from sorry,-/
-          let ⟨z, _⟩ := exists_mem_of_ne_empty $ mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < sup›) in
-          have z ∈ Ioo x sup, from ‹z ∈ Ioo x sup›,
-          have z ∈ i, from classical.by_cases
-            (assume _ : z ∈ i, ‹z ∈ i›)
-            (assume _ : z ∉ i,
-            have false, from sorry,
-            false.elim ‹false›),
-          have x < z, from ‹z ∈ Ioo x sup›.left,
-          ‹interval i› y x z ‹y ∈ i› ‹z ∈ i› ‹y ≤ x› (le_of_lt ‹x < z›)),
+            have ∀ z ∈ i, z ≤ sup2, from
+              assume z,
+              assume _ : z ∈ i,
+              le_of_not_lt $
+                assume _ : z > sup2,
+                have z ≠ sup, from assume _ : z = sup, ‹sup ∉ i› $ ‹z = sup› ▸ ‹z ∈ i›,
+                have z < sup, from lt_of_le_of_ne (le_sup z ‹z ∈ i›) ‹z ≠ sup›,
+                have z ∈ Ioo x sup, from ⟨lt_trans ‹x < sup2 ∧ sup2 < sup›.left ‹sup2 < z›, ‹z < sup›⟩,
+                have z ∈ i ∩ Ioo x sup, from mem_inter ‹z ∈ i› ‹z ∈ Ioo x sup›,
+                show false, from eq_empty_iff_forall_not_mem.mp ‹i ∩ Ioo x sup = ∅› z ‹z ∈ i ∩ Ioo x sup›,
+            have sup ≤ sup2, from (bound_iff_ge_sup sup2).mpr this,
+            show false, from (not_le_of_lt ‹x < sup2 ∧ sup2 < sup›.right) ‹sup ≤ sup2›,
+          let ⟨z, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo x sup ≠ ∅› in
+          have z ∈ i, from mem_of_mem_inter_left ‹z ∈ i ∩ Ioo x sup›,
+          have x ≤ z, from le_of_lt (mem_of_mem_inter_right ‹z ∈ i ∩ Ioo x sup›).left,
+          ‹interval i› y x z ‹y ∈ i› ‹z ∈ i› ‹y ≤ x› ‹x ≤ z›),
       by simp [this])) --add the large disjunction
   ⟩)
   (sorry)
