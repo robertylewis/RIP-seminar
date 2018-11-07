@@ -212,10 +212,21 @@ def Ioc (a b : α) := {x | a < x ∧ x ≤ b}
 def Iic (a : α) := {x | x ≤ a}
 
 /-- Left-open right-infinite interval -/
-def Ioi (b : α) := {x | x < b}
+def Ioi (b : α) := {x | b < x}
+
+
+lemma Iio_inter_Ioi_empty {b : ℝ} : Iio b ∩ Ioi b = ∅ :=
+classical.by_contradiction
+    (assume h : Iio b ∩ Ioi b ≠ ∅,
+    let ⟨x, _⟩ := exists_mem_of_ne_empty h in
+    have x < b, from mem_of_mem_inter_left  ‹x ∈ Iio b ∩ Ioi b›,
+    have b < x, from mem_of_mem_inter_right ‹x ∈ Iio b ∩ Ioi b›,
+    show false, from not_le_of_lt ‹x < b› (le_of_lt ‹b < x›))
+
+lemma is_open_Ioi {b : ℝ} : is_open (Ioi b) := sorry
+
 
 --Classification of bounded above intervals
-
 lemma exists_smaller_of_not_bounded_below {i : set α} (_ : ¬bdd_below i) (x : α) : ∃ y ∈ i, y ≤ x := sorry
 
 lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y :=
@@ -225,26 +236,31 @@ mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < y›)
 theorem exists_inf (S : set ℝ) : (∃ x, x ∈ S) → (∃ x, ∀ y ∈ S, x ≤ y) →
   ∃ x, ∀ y, y ≤ x ↔ ∀ z ∈ S, y ≤ z := sorry
 
-lemma nbhd_sup_ne_empty_of_right_open {i : set ℝ} {x sup : ℝ} (_ : sup ∉ i) (_ : x < sup)
-  (bound_iff_ge_sup : ∀ b, sup ≤ b ↔ ∀ y ∈ i, y ≤ b) : i ∩ Ioo x sup ≠ ∅ :=
+lemma mem_nbhd_sup_of_right_open {i : set ℝ} {x sup : ℝ} (_ : sup ∉ i) (_ : x < sup)
+  (bound_iff_ge_sup : ∀ b, sup ≤ b ↔ ∀ y ∈ i, y ≤ b) : ∃ z ∈ i, x ≤ z :=
 have le_sup : ∀ x ∈ i, x ≤ sup, from (bound_iff_ge_sup sup).mp (le_refl sup),
-assume _ : i ∩ Ioo x sup = ∅, --show that a smaller supremum exists
-let ⟨sup2, _⟩ := exists_real_between ‹x < sup› in
-have ∀ z ∈ i, z ≤ sup2, from
-  assume z,
-  assume _ : z ∈ i,
-  le_of_not_lt $
-    assume _ : z > sup2,
-    have z ≠ sup, from assume _ : z = sup, ‹sup ∉ i› $ ‹z = sup› ▸ ‹z ∈ i›,
-    have z < sup, from lt_of_le_of_ne (le_sup z ‹z ∈ i›) ‹z ≠ sup›,
-    have z ∈ Ioo x sup, from ⟨lt_trans ‹x < sup2 ∧ sup2 < sup›.left ‹sup2 < z›, ‹z < sup›⟩,
-    have z ∈ i ∩ Ioo x sup, from mem_inter ‹z ∈ i› ‹z ∈ Ioo x sup›,
-    show false, from eq_empty_iff_forall_not_mem.mp ‹i ∩ Ioo x sup = ∅› z ‹z ∈ i ∩ Ioo x sup›,
+have i ∩ Ioo x sup ≠ ∅, from
+  assume _ : i ∩ Ioo x sup = ∅, --show that a smaller supremum exists
+  let ⟨sup2, _⟩ := exists_real_between ‹x < sup› in
+  have ∀ z ∈ i, z ≤ sup2, from
+    assume z,
+    assume _ : z ∈ i,
+    le_of_not_lt $
+      assume _ : z > sup2,
+      have z ≠ sup, from assume _ : z = sup, ‹sup ∉ i› $ ‹z = sup› ▸ ‹z ∈ i›,
+      have z < sup, from lt_of_le_of_ne (le_sup z ‹z ∈ i›) ‹z ≠ sup›,
+      have z ∈ Ioo x sup, from ⟨lt_trans ‹x < sup2 ∧ sup2 < sup›.left ‹sup2 < z›, ‹z < sup›⟩,
+      have z ∈ i ∩ Ioo x sup, from mem_inter ‹z ∈ i› ‹z ∈ Ioo x sup›,
+      show false, from eq_empty_iff_forall_not_mem.mp ‹i ∩ Ioo x sup = ∅› z ‹z ∈ i ∩ Ioo x sup›,
 have sup ≤ sup2, from (bound_iff_ge_sup sup2).mpr this,
-show false, from (not_le_of_lt ‹x < sup2 ∧ sup2 < sup›.right) ‹sup ≤ sup2›
+show false, from (not_le_of_lt ‹x < sup2 ∧ sup2 < sup›.right) ‹sup ≤ sup2›,
+let ⟨z, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo x sup ≠ ∅› in
+have z ∈ i, from mem_of_mem_inter_left ‹z ∈ i ∩ Ioo x sup›,
+have x ≤ z, from le_of_lt (mem_of_mem_inter_right ‹z ∈ i ∩ Ioo x sup›).left,
+⟨z, ‹z ∈ i›, ‹x ≤ z›⟩
 
-lemma nbhd_inf_ne_empty_of_left_open {i : set ℝ} {x inf : ℝ} (_ : inf ∉ i) (_ : inf < x)
-  (bound_iff_le_inf : ∀ b, b ≤ inf ↔ ∀ y ∈ i, b ≤ y) : i ∩ Ioo inf x ≠ ∅ := sorry
+lemma mem_nbhd_inf_of_left_open {i : set ℝ} {x inf : ℝ} (_ : inf ∉ i) (_ : inf < x)
+  (bound_iff_le_inf : ∀ b, b ≤ inf ↔ ∀ y ∈ i, b ≤ y) : ∃ z ∈ i, z ≤ x := sorry
 
 
 theorem bdd_above_interval_iff {i : set ℝ} (_ : bdd_above i) (_ : i ≠ ∅) : interval i ↔
@@ -280,10 +296,7 @@ iff.intro
           iff.intro
             (assume _ : x ∈ i, ⟨gt_inf x ‹x ∈ i›, le_sup x ‹x ∈ i›⟩)
             (assume _ : x ∈ Ioc inf sup,
-            have i ∩ Ioo inf x ≠ ∅, from nbhd_inf_ne_empty_of_left_open ‹inf ∉ i› ‹inf < x ∧ x ≤ sup›.left bound_iff_le_inf,
-            let ⟨z, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo inf x ≠ ∅› in --DUPLICATE
-            have z ∈ i, from mem_of_mem_inter_left ‹z ∈ i ∩ Ioo inf x›,
-            have z ≤ x, from le_of_lt (mem_of_mem_inter_right ‹z ∈ i ∩ Ioo inf x›).right,
+            let ⟨z, _, _⟩ := mem_nbhd_inf_of_left_open ‹inf ∉ i› ‹inf < x ∧ x ≤ sup›.left bound_iff_le_inf in
             ‹interval i› z x sup ‹z ∈ i› ‹sup ∈ i› ‹z ≤ x› ‹x ∈ Ioc inf sup›.right),
         by simp [this]))
       (assume _ : sup ∉ i,
@@ -296,10 +309,7 @@ iff.intro
           iff.intro
             (assume _ : x ∈ i, ⟨ge_inf x ‹x ∈ i›, lt_sup x ‹x ∈ i›⟩)
             (assume _ : x ∈ Ico inf sup,
-            have i ∩ Ioo x sup ≠ ∅, from nbhd_sup_ne_empty_of_right_open ‹sup ∉ i› ‹inf ≤ x ∧ x < sup›.right bound_iff_ge_sup,
-            let ⟨z, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo x sup ≠ ∅› in --DUPLICATE
-            have z ∈ i, from mem_of_mem_inter_left ‹z ∈ i ∩ Ioo x sup›,
-            have x ≤ z, from le_of_lt (mem_of_mem_inter_right ‹z ∈ i ∩ Ioo x sup›).left,
+            let ⟨z, _, _⟩ := mem_nbhd_sup_of_right_open ‹sup ∉ i› ‹inf ≤ x ∧ x < sup›.right bound_iff_ge_sup in
             ‹interval i› inf x z ‹inf ∈ i› ‹z ∈ i› ‹x ∈ Ico inf sup›.left ‹x ≤ z›),
         by simp [this])
         (assume _ : inf ∉ i, --left-open right-open case
@@ -308,17 +318,10 @@ iff.intro
         have i = Ioo inf sup, from ext $
           assume x,
           iff.intro
-            (assume _ : x ∈ i,
-            ⟨gt_inf x ‹x ∈ i›, lt_sup x ‹x ∈ i›⟩)
+            (assume _ : x ∈ i, ⟨gt_inf x ‹x ∈ i›, lt_sup x ‹x ∈ i›⟩)
             (assume _ : x ∈ Ioo inf sup,
-            have i ∩ Ioo x sup ≠ ∅, from nbhd_sup_ne_empty_of_right_open ‹sup ∉ i› ‹inf < x ∧ x < sup›.right bound_iff_ge_sup,
-            have i ∩ Ioo inf x ≠ ∅, from nbhd_inf_ne_empty_of_left_open ‹inf ∉ i› ‹inf < x ∧ x < sup›.left bound_iff_le_inf,
-            let ⟨z1, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo inf x ≠ ∅› in --DUPLICATE
-            have z1 ∈ i, from mem_of_mem_inter_left ‹z1 ∈ i ∩ Ioo inf x›,
-            have z1 ≤ x, from le_of_lt (mem_of_mem_inter_right ‹z1 ∈ i ∩ Ioo inf x›).right,
-            let ⟨z2, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo x sup ≠ ∅› in --DUPLICATE
-            have z2 ∈ i, from mem_of_mem_inter_left ‹z2 ∈ i ∩ Ioo x sup›,
-            have x ≤ z2, from le_of_lt (mem_of_mem_inter_right ‹z2 ∈ i ∩ Ioo x sup›).left,
+            let ⟨z1, _, _⟩ := mem_nbhd_inf_of_left_open ‹inf ∉ i› ‹inf < x ∧ x < sup›.left bound_iff_le_inf in
+            let ⟨z2, _, _⟩ := mem_nbhd_sup_of_right_open ‹sup ∉ i› ‹inf < x ∧ x < sup›.right bound_iff_ge_sup in
             ‹interval i› z1 x z2 ‹z1 ∈ i› ‹z2 ∈ i› ‹z1 ≤ x› ‹x ≤ z2›),
         by simp [this]))⟩)
     (assume _ : ¬bdd_below i, /-left-infinite cases-/
@@ -342,10 +345,7 @@ iff.intro
           have x ≠ sup, from ne_of_mem_of_not_mem ‹x ∈ i› ‹sup ∉ i›,
           lt_of_le_of_ne (le_sup x ‹x ∈ i›) ‹x ≠ sup›)
           (assume _ : x ∈ Iio sup,
-          have i ∩ Ioo x sup ≠ ∅, from nbhd_sup_ne_empty_of_right_open ‹sup ∉ i› ‹x < sup› bound_iff_ge_sup,
-          let ⟨z, _⟩ := exists_mem_of_ne_empty ‹i ∩ Ioo x sup ≠ ∅› in --DUPLICATE
-          have z ∈ i, from mem_of_mem_inter_left ‹z ∈ i ∩ Ioo x sup›,
-          have x ≤ z, from le_of_lt (mem_of_mem_inter_right ‹z ∈ i ∩ Ioo x sup›).left,
+          let ⟨z, _, _⟩ := mem_nbhd_sup_of_right_open ‹sup ∉ i› ‹x < sup› bound_iff_ge_sup in
           ‹interval i› y x z ‹y ∈ i› ‹z ∈ i› ‹y ≤ x› ‹x ≤ z›),
       by simp [this]))⟩) --add the large disjunction
   (begin
@@ -587,21 +587,29 @@ assume h : disconnected_subset i,
         not_le_of_gt ‹inf > z› ‹inf ≤ z›)
   end
 
-lemma is_open_Ioi {b : ℝ} : is_open (Ioi b) := sorry
+
 
 theorem connected_of_interval {i : set ℝ} [connected_space i] : interval i :=
 by intros x y z _ _ _ _;
 exact
   --assume x≠y and y≠z
-  classical.by_contradiction
-  (assume _ : y ∉ i,
-  have Iio y ∩ Ioi y ∩ i = ∅, from sorry,
-  have i ⊆ Iio y ∪ Ioi y, from sorry,
-  have Iio y ∩ i ≠ ∅, from sorry, --contains x
-  have Ioi y ∩ i ≠ ∅, from sorry, --contains z
-  have disconnected_subset i, from ⟨Iio y, Ioi y, is_open_Iio, is_open_Ioi, ‹Iio y ∩ i ≠ ∅›, ‹Ioi y ∩ i ≠ ∅›, ‹Iio y ∩ Ioi y ∩ i = ∅›, ‹i ⊆ Iio y ∪ Ioi y›⟩,
-  have ¬connected_space i, by simpa [subtype_connected_iff_subset_connected],
-  this ‹connected_space i›)
+  classical.by_cases
+    (assume h : x = y ∨ y = z,
+    or.elim h
+      (sorry)
+      (sorry))
+    (assume _ : ¬(x = y ∨ y = z),
+    have x < y, from sorry,
+    have y < z, from sorry,
+    classical.by_contradiction
+    (assume _ : y ∉ i,
+    have Iio y ∩ Ioi y ∩ i = ∅, from sorry, --Iio_inter_Ioi_empty ▸ empty_inter (Iio y ∩ Ioi y),
+    have i ⊆ Iio y ∪ Ioi y, from sorry, --y ∉ i
+    have Iio y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹x < y› ‹x ∈ i›),
+    have Ioi y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹y < z› ‹z ∈ i›),
+    have disconnected_subset i, from ⟨Iio y, Ioi y, is_open_Iio, is_open_Ioi, ‹Iio y ∩ i ≠ ∅›, ‹Ioi y ∩ i ≠ ∅›, ‹Iio y ∩ Ioi y ∩ i = ∅›, ‹i ⊆ Iio y ∪ Ioi y›⟩,
+    have ¬connected_space i, by simpa [subtype_connected_iff_subset_connected],
+    this ‹connected_space i›))
 
 
 end real
