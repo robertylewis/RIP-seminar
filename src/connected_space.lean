@@ -223,11 +223,17 @@ classical.by_contradiction
     have b < x, from mem_of_mem_inter_right ‹x ∈ Iio b ∩ Ioi b›,
     show false, from not_le_of_lt ‹x < b› (le_of_lt ‹b < x›))
 
-lemma is_open_Ioi {b : ℝ} : is_open (Ioi b) := sorry
+lemma neg_Ioi_eq_Iio {b : ℝ} : (λ (x : ℝ), -x)⁻¹' (Iio (-b)) = Ioi b := sorry
 
+lemma is_open_Ioi {b : ℝ} : is_open (Ioi b) :=
+let neg := λ (x : ℝ), -x in
+have continuous neg, from topological_ring.continuous_neg ℝ,
+@neg_Ioi_eq_Iio b ▸ ‹continuous neg› (Iio (-b)) is_open_Iio
 
 --Classification of bounded above intervals
-lemma exists_smaller_of_not_bounded_below {i : set α} (_ : ¬bdd_below i) (x : α) : ∃ y ∈ i, y ≤ x := sorry
+lemma exists_smaller_of_not_bounded_below {i : set ℝ} (_ : ¬bdd_below i) (x : ℝ) : ∃ y ∈ i, y ≤ x :=
+sorry
+--get a timeout when trying to prove this...
 
 lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y :=
 suffices Ioo x y ≠ ∅, from exists_mem_of_ne_empty this,
@@ -348,9 +354,13 @@ iff.intro
           let ⟨z, _, _⟩ := mem_nbhd_sup_of_right_open ‹sup ∉ i› ‹x < sup› bound_iff_ge_sup in
           ‹interval i› y x z ‹y ∈ i› ‹z ∈ i› ‹y ≤ x› ‹x ≤ z›),
       by simp [this]))⟩) --add the large disjunction
-  (begin
+  --(begin
+  --intros h,
+  --cases h with b h1,
+  --cases h1 with hic h2,
+  --show interval i, from (assume x y z _ _ _ _, eq.symm hic ▸ le_trans ‹y ≤ z› (show z ∈ Iic b, from (hic ▸ ‹z ∈ i›)))
   sorry
-  end)
+  --end)
 
 
 end intervals
@@ -452,10 +462,9 @@ lemma subset_separation_left_inter_closed {α : Type u} {s s₁ s₂ c : set α}
 let ⟨_, _, _, _, _, _⟩ := sep in
 let s₁' := s₁ ∩ c in
 have c ∩ s₁ ∩ s₂ = ∅, from subset_empty_iff.mp $
-calc c ∩ s₁ ∩ s₂ ⊆ s ∩ s₁ ∩ s₂   : by simp [inter_subset_inter_left, inter_assoc, ‹c ⊆ s›]
-             ... = s ∩ (s₁ ∩ s₂) : by rw [inter_assoc]
-             ... = s₁ ∩ s₂ ∩ s   : by rw [inter_comm] --should be doable in one step
-             ... = ∅             : ‹s₁ ∩ s₂ ∩ s = ∅›,
+calc c ∩ s₁ ∩ s₂ ⊆ s ∩ s₁ ∩ s₂ : by simp [inter_subset_inter_left, inter_assoc, ‹c ⊆ s›]
+             ... = s₁ ∩ s₂ ∩ s : by rw [inter_assoc, inter_comm]
+             ... = ∅         : ‹s₁ ∩ s₂ ∩ s = ∅›,
 have c ⊆ s₁ ∪ s₂, from subset.trans ‹c ⊆ s› ‹s ⊆ s₁ ∪ s₂›,
 have (-s₂) ∩ c = s₁ ∩ c, from
 calc (-s₂) ∩ c = c ∩ (-s₂) : by rw [inter_comm]
@@ -469,8 +478,8 @@ have s₁' ⊆ -s₂, from
   subset_compl_iff_disjoint.mpr ‹s₁ ∩ c ∩ s₂ = ∅›,
 have s₁ ∩ ((-s₂ ∩ c)) = s₁', from
   (calc s₁ ∩ ((-s₂) ∩ c) = (-s₂) ∩ (s₁ ∩ c) : by simp [inter_left_comm]
-                     ... = (-s₂) ∩ s₁'      : by simp
-                     ... = s₁'              : inter_eq_self_of_subset_right ‹s₁' ⊆ -s₂›),
+                     ... = (-s₂) ∩ s₁'     : by simp
+                     ... = s₁'             : inter_eq_self_of_subset_right ‹s₁' ⊆ -s₂›),
 have is_open (-(-s₂)), from (eq.symm (compl_compl s₂)) ▸ ‹is_open s₂›,
 have is_closed (-s₂), from ‹is_open (-(-s₂))›,
 have is_closed (-s₂ ∩ c), from is_closed_inter ‹is_closed (-s₂)› ‹is_closed c›,
@@ -483,7 +492,7 @@ subset_separation_left_inter_closed (subset_sep_symm sep) ‹is_closed c› ‹c
 
 set_option eqn_compiler.zeta true
 
-instance interval_connected {i : set ℝ} (_ : interval i) : connected_space i :=
+instance interval_of_connected {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
 assume h : disconnected_subset i,
   let ⟨s₁, s₂, sep⟩ := h in
@@ -548,63 +557,44 @@ assume h : disconnected_subset i,
       have z ∈ Ioo sup inf, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
       have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
       have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
+      have a ≤ z, from le_trans ‹sup ∈ Icc a b›.left (le_of_lt ‹sup < z›),
+      have z ≤ b, from le_trans (le_of_lt ‹z < inf›) ‹inf ∈ Icc a b›.right,
       show false, from mem_union.elim ‹z ∈ s₁ ∪ s₂›
         (assume _ : z ∈ s₁,
-        have z ∈ s₁',
-          begin
-            constructor,
-            assumption,
-            constructor,
-            transitivity sup,
-            exact (mem_def.mp ‹sup ∈ Icc a b›).left,
-            exact le_of_lt ‹sup < z›,
-            transitivity inf,
-            exact le_of_lt ‹z < inf›,
-            exact (mem_def.mp ‹inf ∈ Icc a b›).right
-          end,
+        have z ∈ s₁', from mem_inter ‹z ∈ s₁› $ and.intro ‹a ≤ z› ‹z ≤ b›,
         have z ≤ sup, from real.le_Sup s₁' ‹bdd_above s₁'› ‹z ∈ s₁'›,
         not_lt_of_le ‹z ≤ sup› ‹sup < z›)
         (assume _ : z ∈ s₂,
-        have z ∈ s₂'',
-          begin
-            constructor,
-            constructor,
-            assumption,
-            constructor,
-            transitivity sup,
-            exact (mem_def.mp ‹sup ∈ Icc a b›).left,
-            exact le_of_lt ‹sup < z›,
-            transitivity inf,
-            exact le_of_lt ‹z < inf›,
-            exact (mem_def.mp ‹inf ∈ Icc a b›).right,
-            constructor,
-            exact le_of_lt ‹sup < z›,
-            transitivity inf,
-            exact le_of_lt ‹z < inf›,
-            exact (mem_def.mp ‹inf ∈ Icc a b›).right
-          end,
+        have z ∈ s₂', from mem_inter ‹z ∈ s₂› $ and.intro ‹a ≤ z› ‹z ≤ b›,
+        have z ∈ s₂'', from mem_inter ‹z ∈ s₂'› $ and.intro (le_of_lt ‹sup < z›) ‹z ≤ b›,
         have z ≥ inf, from real.Inf_le s₂'' ‹bdd_below s₂''› ‹z ∈ s₂''›,
         not_le_of_gt ‹inf > z› ‹inf ≤ z›)
   end
 
-
-
 theorem connected_of_interval {i : set ℝ} [connected_space i] : interval i :=
 by intros x y z _ _ _ _;
 exact
-  --assume x≠y and y≠z
   classical.by_cases
     (assume h : x = y ∨ y = z,
     or.elim h
-      (sorry)
-      (sorry))
+      (assume _ : x = y, ‹x = y› ▸ ‹x ∈ i›)
+      (assume _ : y = z, eq.symm ‹y = z› ▸ ‹z ∈ i›))
     (assume _ : ¬(x = y ∨ y = z),
-    have x < y, from sorry,
-    have y < z, from sorry,
+    have x ≠ y ∧ y ≠ z, from not_or_distrib.mp ‹¬(x = y ∨ y = z)›,
+    have x < y, from lt_of_le_of_ne ‹x ≤ y› ‹x ≠ y ∧ y ≠ z›.left,
+    have y < z, from lt_of_le_of_ne ‹y ≤ z› ‹x ≠ y ∧ y ≠ z›.right,
     classical.by_contradiction
     (assume _ : y ∉ i,
-    have Iio y ∩ Ioi y ∩ i = ∅, from sorry, --Iio_inter_Ioi_empty ▸ empty_inter (Iio y ∩ Ioi y),
-    have i ⊆ Iio y ∪ Ioi y, from sorry, --y ∉ i
+    have Iio y ∩ Ioi y ∩ i = ∅, from
+      calc Iio y ∩ Ioi y ∩ i = ∅ ∩ i : by rw [Iio_inter_Ioi_empty]
+                         ... = ∅     : empty_inter i,
+    have i ⊆ Iio y ∪ Ioi y, from subset_def.mpr
+      (assume a,
+      assume _ : a ∈ i,
+      have a ≠ y, from ne_of_mem_of_not_mem ‹a ∈ i› ‹y ∉ i›,
+      or.elim (ne_iff_lt_or_gt.mp ‹a ≠ y›)
+        (assume _ : a < y, mem_union_left  (Ioi y) ‹a < y›)
+        (assume _ : a > y, mem_union_right (Iio y) ‹y < a›)),
     have Iio y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹x < y› ‹x ∈ i›),
     have Ioi y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹y < z› ‹z ∈ i›),
     have disconnected_subset i, from ⟨Iio y, Ioi y, is_open_Iio, is_open_Ioi, ‹Iio y ∩ i ≠ ∅›, ‹Ioi y ∩ i ≠ ∅›, ‹Iio y ∩ Ioi y ∩ i = ∅›, ‹i ⊆ Iio y ∪ Ioi y›⟩,
