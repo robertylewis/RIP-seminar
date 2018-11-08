@@ -31,12 +31,6 @@ have f x ∈ s, from (eq.symm ‹f x = y›) ▸ ‹y ∈ s›,
 show f⁻¹' s ≠ ∅, from ne_empty_of_mem ‹x ∈ f⁻¹' s›
 
 
-lemma sep_neg {s₁ s₂ : set α} (h1 : s₁ ∩ s₂ = ∅) (h2 : s₁ ∪ s₂ = univ) : s₁ = -s₂ :=
-have h3 : s₁ ⊆ -s₂, from subset_compl_iff_disjoint.mpr h1,
-have h4 : -s₂ ⊆ s₁, from compl_subset_iff_union.mpr (eq.trans (union_comm s₂ s₁) h2),
-show s₁ = -s₂, from antisymm h3 h4
-
-
 --Separations of a topological space
 def separation (s₁ s₂ : set α) : Prop :=
 is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ s₂ = ∅ ∧ s₁ ∪ s₂ = univ
@@ -44,10 +38,16 @@ is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ s�
 lemma sep_symm {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : separation s₂ s₁ :=
 let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in ⟨ho2, ho1, hne2, hne1, (inter_comm s₁ s₂) ▸ hce, (union_comm s₁ s₂) ▸ huu⟩
 
+lemma sep_neg (sep : separation s₁ s₂) : s₁ = -s₂ :=
+let ⟨_, _, _, _, _, _⟩ := sep in
+have s₁ ⊆ -s₂, by rw [subset_compl_iff_disjoint]; assumption,
+have -s₂ ⊆ s₁, by rw [compl_subset_iff_union, union_comm]; assumption,
+antisymm ‹s₁ ⊆ -s₂› ‹-s₂ ⊆ s₁›
+
 lemma sep_sets_closed {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : is_closed s₁ ∧ is_closed s₂ :=
 let ⟨ho1, ho2, _, _, hce, huu⟩ := h in
-have he1 : -s₂ = s₁, from eq.symm (sep_neg hce huu),
-have he2 : -s₁ = s₂, from eq.symm (sep_neg (trans (inter_comm s₂ s₁) hce) (trans (union_comm s₂ s₁) huu)),
+have he1 : -s₂ = s₁, from eq.symm (sep_neg h),
+have he2 : -s₁ = s₂, from eq.symm (sep_neg (sep_symm h)),
 ⟨he1 ▸ is_closed_compl_iff.mpr ho2, he2 ▸ is_closed_compl_iff.mpr ho1⟩
 
 
