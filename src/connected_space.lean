@@ -79,26 +79,7 @@ assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
   show false, from connected_space.connected α
     ⟨s₁, s₂, ‹separation s₁ s₂›⟩
 
-
---Separations of a subset of a topological space
-def subset_separation [topological_space α] (s s₁ s₂ : set α) : Prop :=
-is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂
-
-lemma subset_sep_symm {t : topological_space α} {s s₁ s₂ : set α} (h : subset_separation s s₁ s₂) : subset_separation s s₂ s₁ :=
-let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in
-⟨ho2, ho1, hne2, hne1, (inter_comm s₁ s₂) ▸ hce, (union_comm s₁ s₂) ▸ huu⟩
-
-lemma subset_sep_iff_sep {s s₁ s₂ : set α} :
-  subset_separation s s₁ s₂ ↔ @separation s _ (subtype.val⁻¹' s₁) (subtype.val⁻¹' s₂) := sorry
-
-
---Connected subsets of a topological space
-def disconnected_subset (s : set α) : Prop :=
-∃s₁ s₂ : set α, subset_separation s s₁ s₂
-
-def connected_subset (s : set α) : Prop :=
-¬(disconnected_subset s)
-
+--- Usefull lemma's about the inclusion map
 lemma subtype_val_univ_eq (s : set α) : (subtype.val) '' (@univ s) = s :=
 calc
   subtype.val '' (@univ s) = range subtype.val : image_univ
@@ -136,6 +117,72 @@ lemma preimage_subtype_val_ne_empty_iff {s : set α} (t : set α) :
   @subtype.val α s ⁻¹' t ≠ ∅ ↔ s ∩ t ≠ ∅ :=
 not_iff_not_of_iff (preimage_subtype_val_empty_iff t)
 
+--Separations of a subset of a topological space
+def subset_separation [topological_space α] (s s₁ s₂ : set α) : Prop :=
+is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂
+
+lemma subset_sep_symm {t : topological_space α} {s s₁ s₂ : set α} (h : subset_separation s s₁ s₂) : subset_separation s s₂ s₁ :=
+let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in
+⟨ho2, ho1, hne2, hne1, (inter_comm s₁ s₂) ▸ hce, (union_comm s₁ s₂) ▸ huu⟩
+
+lemma sep_of_subset_sep {s s₁ s₂ : set α} :
+  subset_separation s s₁ s₂ → @separation s _ (subtype.val⁻¹' s₁) (subtype.val⁻¹' s₂) := 
+let lift := @subtype.val _ s in
+assume h : subset_separation s s₁ s₂,
+let ⟨_, _, _, _, _, _⟩ := h in
+let s₁' := lift ⁻¹' s₁ in
+let s₂' := lift ⁻¹' s₂ in
+have is_open s₁', from ⟨s₁, ‹is_open s₁›, eq.refl s₁'⟩,
+have is_open s₂', from ⟨s₂, ‹is_open s₂›, eq.refl s₂'⟩,
+have s₁' ≠ ∅, by rw [preimage_subtype_val_ne_empty_iff, inter_comm]; assumption,
+have s₂' ≠ ∅, by rw [preimage_subtype_val_ne_empty_iff, inter_comm]; assumption,
+have s₁' ∩ s₂' = ∅, by rw [←preimage_inter, preimage_subtype_val_empty_iff, inter_comm]; assumption,
+have s₁' ∪ s₂' = univ, from
+  (have s₁' ∪ s₂' ⊆ univ, from subset_univ (s₁' ∪ s₂'),
+   have univ ⊆ s₁' ∪ s₂', from
+     calc
+      univ = lift ⁻¹' s : by rw preimage_subtype_val_eq_univ
+       ... ⊆ lift ⁻¹' (s₁ ∪ s₂) : preimage_mono ‹s ⊆ s₁ ∪ s₂›
+       ... = (lift ⁻¹' s₁) ∪ (lift ⁻¹' s₂) : by rw preimage_union
+       ... = s₁' ∪ s₂' : rfl,
+   show s₁' ∪ s₂' = univ, from eq_of_subset_of_subset ‹s₁' ∪ s₂' ⊆ univ› ‹univ ⊆ s₁' ∪ s₂'›
+  ),
+show separation s₁' s₂',
+   from ⟨‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ≠ ∅›, ‹s₂' ≠ ∅›, ‹s₁' ∩ s₂' = ∅›, ‹s₁' ∪ s₂' = univ›⟩
+
+lemma exists_subset_sep_of_sep {s : set α} {s₁ s₂ : set s} :
+  separation s₁ s₂ → ∃ s₁' s₂' : set α, subset_separation s s₁' s₂' :=
+let lift := @subtype.val _ s in
+assume h : separation s₁ s₂,
+let ⟨_, _, _, _, _, _⟩ := h in
+have ∃ s₁' : set α, is_open s₁' ∧ s₁ = (lift) ⁻¹' s₁', from ‹is_open s₁›,
+let ⟨s₁', _, _⟩ := this in
+have ∃ s₂' : set α, is_open s₂' ∧ s₂ = (lift) ⁻¹' s₂', from ‹is_open s₂›,
+let ⟨s₂', _, _⟩ := this in
+have s₁' ∩ s ≠ ∅,
+  by rw [←inter_comm, ←preimage_subtype_val_ne_empty_iff, ←‹s₁ = lift ⁻¹' s₁'›]; assumption,
+have s₂' ∩ s ≠ ∅,
+  by rw [←inter_comm, ←preimage_subtype_val_ne_empty_iff, ←‹s₂ = lift ⁻¹' s₂'›]; assumption,
+have s₁' ∩ s₂' ∩ s = ∅,
+  by rw [←inter_comm, ←preimage_subtype_val_empty_iff, preimage_inter, ←‹s₁ = lift ⁻¹' s₁'›, ←‹s₂ = lift ⁻¹' s₂'›]; assumption,
+have s ⊆ s₁' ∪ s₂', from
+  (calc
+       s = lift '' (univ) : by rw (subtype_val_univ_eq s)
+     ... = lift '' (s₁ ∪ s₂) : by rw ‹s₁ ∪ s₂ = univ›
+     ... = lift '' s₁ ∪ lift '' s₂ : by rw image_union
+     ... = (lift '' (lift ⁻¹' s₁')) ∪ (lift '' (lift ⁻¹' s₂')) : by rw [‹s₁ = lift ⁻¹' s₁'›, ‹s₂ = lift ⁻¹' s₂'›]
+     ... ⊆ s₁' ∪ s₂' : union_subset_union (image_preimage_subset lift s₁') (image_preimage_subset lift s₂')
+  ),
+show ∃s₁' s₂' : set α, subset_separation s s₁' s₂',
+  from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ∩ s ≠ ∅›, ‹s₂' ∩ s ≠ ∅›, ‹s₁' ∩ s₂' ∩ s = ∅›, ‹s ⊆ s₁' ∪ s₂'›⟩
+
+--Connected subsets of a topological space
+def disconnected_subset (s : set α) : Prop :=
+∃s₁ s₂ : set α, subset_separation s s₁ s₂
+
+def connected_subset (s : set α) : Prop :=
+¬(disconnected_subset s)
+
 lemma connected_space_iff : connected_space α ↔ ¬∃ s₁ s₂ : set α, separation s₁ s₂ :=
 begin
   constructor,
@@ -149,52 +196,13 @@ suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_s
 let lift := @subtype.val α s in
 iff.intro
   (assume h : ∃ s₁ s₂ : set s, separation s₁ s₂,
-   let ⟨s₁, s₂, _, _, _, _, _, _⟩ := h in
-   have ∃ s₁' : set α, is_open s₁' ∧ s₁ = (lift) ⁻¹' s₁', from ‹is_open s₁›,
-   let ⟨s₁', _, _⟩ := this in
-   have ∃ s₂' : set α, is_open s₂' ∧ s₂ = (lift) ⁻¹' s₂', from ‹is_open s₂›,
-   let ⟨s₂', _, _⟩ := this in
-   have s₁' ∩ s ≠ ∅,
-     by rw [←inter_comm, ←preimage_subtype_val_ne_empty_iff, ←‹s₁ = lift ⁻¹' s₁'›]; assumption,
-   have s₂' ∩ s ≠ ∅,
-     by rw [←inter_comm, ←preimage_subtype_val_ne_empty_iff, ←‹s₂ = lift ⁻¹' s₂'›]; assumption,
-   have s₁' ∩ s₂' ∩ s = ∅,
-     by rw [←inter_comm, ←preimage_subtype_val_empty_iff, preimage_inter, ←‹s₁ = lift ⁻¹' s₁'›, ←‹s₂ = lift ⁻¹' s₂'›]; assumption,
-   have s ⊆ s₁' ∪ s₂', from
-     (calc
-          s = lift '' (univ) : by rw (subtype_val_univ_eq s)
-        ... = lift '' (s₁ ∪ s₂) : by rw ‹s₁ ∪ s₂ = univ›
-        ... = lift '' s₁ ∪ lift '' s₂ : by rw image_union
-        ... = (lift '' (lift ⁻¹' s₁')) ∪ (lift '' (lift ⁻¹' s₂')) : by rw [‹s₁ = lift ⁻¹' s₁'›, ‹s₂ = lift ⁻¹' s₂'›]
-        ... ⊆ s₁' ∪ s₂' : union_subset_union (image_preimage_subset lift s₁') (image_preimage_subset lift s₂')
-     ),
-   show ∃s₁ s₂ : set α, is_open s₁ ∧ is_open s₂ ∧ s₁ ∩ s ≠ ∅ ∧ s₂ ∩ s ≠ ∅ ∧ s₁ ∩ s₂ ∩ s = ∅ ∧ s ⊆ s₁ ∪ s₂,
-   from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ∩ s ≠ ∅›, ‹s₂' ∩ s ≠ ∅›, ‹s₁' ∩ s₂' ∩ s = ∅›, ‹s ⊆ s₁' ∪ s₂'›⟩
+   let ⟨s₁, s₂, h₁⟩ := h in
+   show ∃ s₁' s₂' : set α, subset_separation s s₁' s₂', from exists_subset_sep_of_sep h₁
   )
   (assume h : disconnected_subset s,
-   let ⟨s₁, s₂, _, _, _, _, _, _⟩ := h in
-   let s₁' := lift ⁻¹' s₁ in
-   let s₂' := lift ⁻¹' s₂ in
-   have is_open s₁', from ⟨s₁, ‹is_open s₁›, eq.refl s₁'⟩,
-   have is_open s₂', from ⟨s₂, ‹is_open s₂›, eq.refl s₂'⟩,
-   have s₁' ≠ ∅, 
-     by rw [preimage_subtype_val_ne_empty_iff, inter_comm]; assumption,
-   have s₂' ≠ ∅, 
-     by rw [preimage_subtype_val_ne_empty_iff, inter_comm]; assumption,
-   have s₁' ∩ s₂' = ∅, 
-     by rw [←preimage_inter, preimage_subtype_val_empty_iff, inter_comm]; assumption,
-   have s₁' ∪ s₂' = univ, from
-     (have s₁' ∪ s₂' ⊆ univ, from subset_univ (s₁' ∪ s₂'),
-      have univ ⊆ s₁' ∪ s₂', from
-        calc
-         univ = lift ⁻¹' s : by rw preimage_subtype_val_eq_univ
-          ... ⊆ lift ⁻¹' (s₁ ∪ s₂) : preimage_mono ‹s ⊆ s₁ ∪ s₂›
-          ... = (lift ⁻¹' s₁) ∪ (lift ⁻¹' s₂) : by rw preimage_union
-          ... = s₁' ∪ s₂' : rfl,
-      show s₁' ∪ s₂' = univ, from eq_of_subset_of_subset ‹s₁' ∪ s₂' ⊆ univ› ‹univ ⊆ s₁' ∪ s₂'›
-     ),
+   let ⟨s₁, s₂, h₁⟩ := h in
    show ∃ s₁ s₂ : set s, separation s₁ s₂,
-     from ⟨s₁', s₂', ‹is_open s₁'›, ‹is_open s₂'›, ‹s₁' ≠ ∅›, ‹s₂' ≠ ∅›, ‹s₁' ∩ s₂' = ∅›, ‹s₁' ∪ s₂' = univ›⟩
+     from ⟨lift ⁻¹' s₁, lift ⁻¹' s₂, sep_of_subset_sep h₁⟩
   )
 
 end connected
