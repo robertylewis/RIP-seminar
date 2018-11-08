@@ -240,7 +240,7 @@ iff.intro
     ⟨-y,
     assume x,
     assume _ : x ∈ {x | -x ∈ S},
-    have -x ∈ S, from mem_iff_neg_mem.mpr ‹x ∈ {y | -y ∈ S}›,
+    have -x ∈ S, by rwa [mem_iff_neg_mem],
     neg_neg x ▸ neg_le_neg (h (-x) ‹-x ∈ S›)⟩)
   (assume ⟨y, h⟩, --{x | -x ∈ S} is bounded from above by y
     ⟨-y,
