@@ -281,7 +281,7 @@ lemma subset_separation_left_inter_closed {α : Type u} {s s₁ s₂ c : set α}
   (sub_sep : subset_separation s s₁ s₂) (_ : is_closed c) (_ : c ⊆ s) : is_closed (s₁ ∩ c) :=
 let ⟨_, _, _, _, _, _⟩ := sub_sep in
 let lift := @subtype.val α s in
-have sep : @separation s _ (lift⁻¹' s₁) (lift⁻¹' s₂), by rwa [←subset_sep_iff_sep],
+have sep : @separation s _ (lift⁻¹' s₁) (lift⁻¹' s₂), from sep_of_subset_sep sub_sep,
 have h : lift⁻¹' s₁ = lift⁻¹' -s₂, by rw [sep_neg sep, eq.symm preimage_compl],
 have is_closed (-s₂), by rw [show is_closed (-s₂) = is_open ( - - s₂), by refl]; rwa [compl_compl s₂],
 have s₁ ∩ s = -s₂ ∩ s, from
