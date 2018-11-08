@@ -12,7 +12,7 @@ open tactic
 
 universes u v
 
-section interval
+section intervals
 
 variables {α : Type*} [partial_order α] {i : set α}
 
@@ -182,7 +182,7 @@ iff.intro
   --end)
 
 
-end interval
+end intervals
 
 
 section real
@@ -276,33 +276,24 @@ calc s ∩-s₂ ⊆ s ∩ ((s₁ ∪ s₂) ∩ -s₂) : by simp [inter_subset_in
         ... ⊆ s ∩ s₁                : by simp [inter_subset_inter_right, inter_distrib_right],
 eq_of_subset_of_subset ‹s ∩ s₁ ⊆ s ∩ -s₂› ‹s ∩-s₂ ⊆ s ∩ s₁›
 
+
 lemma subset_separation_left_inter_closed {α : Type u} {s s₁ s₂ c : set α} [topological_space α]
-  (sep : subset_separation s s₁ s₂) (_ : is_closed c) (_ : c ⊆ s) : is_closed (s₁ ∩ c) :=
-let ⟨_, _, _, _, _, _⟩ := sep in
-let s₁' := s₁ ∩ c in
-have c ∩ s₁ ∩ s₂ = ∅, from subset_empty_iff.mp $
-calc c ∩ s₁ ∩ s₂ ⊆ s ∩ s₁ ∩ s₂ : by simp [inter_subset_inter_left, inter_assoc, ‹c ⊆ s›]
-             ... = s₁ ∩ s₂ ∩ s : by rw [inter_assoc, inter_comm]
-             ... = ∅           : ‹s₁ ∩ s₂ ∩ s = ∅›,
-have c ⊆ s₁ ∪ s₂, from subset.trans ‹c ⊆ s› ‹s ⊆ s₁ ∪ s₂›,
-have (-s₂) ∩ c = s₁ ∩ c, from
-calc (-s₂) ∩ c = c ∩ (-s₂) : by rw [inter_comm]
-           ... = c ∩ s₁    : eq.symm $ inter_sep_comp_eq ‹c ∩ s₁ ∩ s₂ = ∅› ‹c ⊆ s₁ ∪ s₂›
-           ... = s₁ ∩ c    : by rw [inter_comm],
-have s₁' ⊆ -s₂, from
-  have s₁' ∩ s₂ = ∅, from subset_empty_iff.mp $
-    calc s₁' ∩ s₂ = s₁ ∩ s₂ ∩ c : by simp [inter_comm, inter_assoc]
-              ... ⊆ s₁ ∩ s₂ ∩ s : inter_subset_inter_right (s₁ ∩ s₂) ‹c ⊆ s›
-              ... = ∅           : ‹s₁ ∩ s₂ ∩ s = ∅›,
-  subset_compl_iff_disjoint.mpr ‹s₁ ∩ c ∩ s₂ = ∅›,
-have s₁ ∩ ((-s₂ ∩ c)) = s₁', from
-  (calc s₁ ∩ ((-s₂) ∩ c) = (-s₂) ∩ (s₁ ∩ c) : by simp [inter_left_comm]
-                     ... = (-s₂) ∩ s₁'     : by simp
-                     ... = s₁'             : inter_eq_self_of_subset_right ‹s₁' ⊆ -s₂›),
-have is_open (-(-s₂)), from (eq.symm (compl_compl s₂)) ▸ ‹is_open s₂›,
-have is_closed (-s₂), from ‹is_open (-(-s₂))›,
-have is_closed (-s₂ ∩ c), from is_closed_inter ‹is_closed (-s₂)› ‹is_closed c›,
-@eq.subst (set α) is_closed (-s₂ ∩ c) (s₁ ∩ c) ‹-s₂ ∩ c = s₁ ∩ c› ‹is_closed (-s₂ ∩ c)›
+  (sub_sep : subset_separation s s₁ s₂) (_ : is_closed c) (_ : c ⊆ s) : is_closed (s₁ ∩ c) :=
+let ⟨_, _, _, _, _, _⟩ := sub_sep in
+let lift := @subtype.val α s in
+have sep : @separation s _ (lift⁻¹' s₁) (lift⁻¹' s₂), by rwa [←subset_sep_iff_sep],
+have h : lift⁻¹' s₁ = lift⁻¹' -s₂, by rw [sep_neg sep, eq.symm preimage_compl],
+have is_closed (-s₂), by rw [show is_closed (-s₂) = is_open ( - - s₂), by refl]; rwa [compl_compl s₂],
+have s₁ ∩ s = -s₂ ∩ s, from
+  calc s₁ ∩ s = lift '' (lift⁻¹' s₁)  : by rw [inter_comm, image_preimage_subtype_val s₁]
+          ... = lift '' (lift⁻¹' -s₂) : by rw h
+          ... = -s₂ ∩ s               : by rw [image_preimage_subtype_val (-s₂), inter_comm],
+have s₁ ∩ c = -s₂ ∩ c, from
+  calc s₁ ∩ c =  s₁ ∩ s ∩ c : by rw [inter_assoc, inter_eq_self_of_subset_right ‹c ⊆ s›]
+          ... = -s₂ ∩ s ∩ c : by rw [←‹s₁ ∩ s = -s₂ ∩ s›]
+          ... = -s₂ ∩ c     : by rw [inter_assoc, inter_eq_self_of_subset_right ‹c ⊆ s›],
+eq.symm this ▸ (is_closed_inter ‹is_closed (-s₂)› ‹is_closed c›)
+
 
 lemma subset_separation_right_inter_closed {α : Type u} {s s₁ s₂ c : set α} [topological_space α]
   (sep : subset_separation s s₁ s₂) (_ : is_closed c) (_ : c ⊆ s) : is_closed (s₂ ∩ c) :=
