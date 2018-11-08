@@ -37,14 +37,15 @@ have h4 : -s₂ ⊆ s₁, from compl_subset_iff_union.mpr (eq.trans (union_comm 
 show s₁ = -s₂, from antisymm h3 h4
 
 
---Separations of a topological space
+-- Separations of a topological space: write α as the disjoint union of non empty, open subsets
 def separation (s₁ s₂ : set α) : Prop :=
 is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ s₂ = ∅ ∧ s₁ ∪ s₂ = univ
 
-lemma sep_symm {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : separation s₂ s₁ :=
+-- Separations are symmetric: if s₁ s₂ is a separation of α, then so is s₂ s₁.
+lemma sep_symm  (h : separation s₁ s₂) : separation s₂ s₁ :=
 let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in ⟨ho2, ho1, hne2, hne1, (inter_comm s₁ s₂) ▸ hce, (union_comm s₁ s₂) ▸ huu⟩
 
-lemma sep_sets_closed {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : is_closed s₁ ∧ is_closed s₂ :=
+lemma sep_sets_closed (h : separation s₁ s₂) : is_closed s₁ ∧ is_closed s₂ :=
 let ⟨ho1, ho2, _, _, hce, huu⟩ := h in
 have he1 : -s₂ = s₁, from eq.symm (sep_neg hce huu),
 have he2 : -s₁ = s₂, from eq.symm (sep_neg (trans (inter_comm s₂ s₁) hce) (trans (union_comm s₂ s₁) huu)),
