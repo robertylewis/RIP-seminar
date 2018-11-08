@@ -38,7 +38,7 @@ show s₁ = -s₂, from antisymm h3 h4
 
 
 --Separations of a topological space
-def separation [topological_space α] (s₁ s₂ : set α) : Prop :=
+def separation (s₁ s₂ : set α) : Prop :=
 is_open s₁ ∧ is_open s₂ ∧ s₁ ≠ ∅ ∧ s₂ ≠ ∅ ∧ s₁ ∩ s₂ = ∅ ∧ s₁ ∪ s₂ = univ
 
 lemma sep_symm {t : topological_space α} {s₁ s₂ : set α} (h : separation s₁ s₂) : separation s₂ s₁ :=
@@ -88,6 +88,9 @@ lemma subset_sep_symm {t : topological_space α} {s s₁ s₂ : set α} (h : sub
 let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in
 ⟨ho2, ho1, hne2, hne1, (inter_comm s₁ s₂) ▸ hce, (union_comm s₁ s₂) ▸ huu⟩
 
+lemma subset_sep_iff_sep {s s₁ s₂ : set α} :
+  subset_separation s s₁ s₂ ↔ @separation s _ (subtype.val⁻¹' s₁) (subtype.val⁻¹' s₂) := sorry
+  
 
 --Connected subsets of a topological space
 def disconnected_subset (s : set α) : Prop :=
@@ -230,10 +233,15 @@ let neg := λ (x : ℝ), -x in
 have continuous neg, from topological_ring.continuous_neg ℝ,
 @neg_Ioi_eq_Iio b ▸ ‹continuous neg› (Iio (-b)) is_open_Iio
 
+
 --Classification of bounded above intervals
 lemma exists_smaller_of_not_bounded_below {i : set ℝ} (_ : ¬bdd_below i) (x : ℝ) : ∃ y ∈ i, y ≤ x :=
-sorry
---get a timeout when trying to prove this...
+have h : ∀ y, ¬∀ z ∈ i, y ≤ z, by rw [←not_exists]; assumption,
+have ¬∀ z ∈ i, x ≤ z, from h x,
+have ∃ z, ¬(z ∈ i → x ≤ z), by rw [←classical.not_forall]; assumption,
+let ⟨z, h1⟩ := this in
+have h2 : z ∈ i ∧ ¬x ≤ z, from (@not_imp _ _ (classical.dec (z ∈ i))).mp h1,
+⟨z, h2.left, le_of_not_le h2.right⟩ 
 
 lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y :=
 suffices Ioo x y ≠ ∅, from exists_mem_of_ne_empty this,
@@ -464,7 +472,7 @@ let s₁' := s₁ ∩ c in
 have c ∩ s₁ ∩ s₂ = ∅, from subset_empty_iff.mp $
 calc c ∩ s₁ ∩ s₂ ⊆ s ∩ s₁ ∩ s₂ : by simp [inter_subset_inter_left, inter_assoc, ‹c ⊆ s›]
              ... = s₁ ∩ s₂ ∩ s : by rw [inter_assoc, inter_comm]
-             ... = ∅         : ‹s₁ ∩ s₂ ∩ s = ∅›,
+             ... = ∅           : ‹s₁ ∩ s₂ ∩ s = ∅›,
 have c ⊆ s₁ ∪ s₂, from subset.trans ‹c ⊆ s› ‹s ⊆ s₁ ∪ s₂›,
 have (-s₂) ∩ c = s₁ ∩ c, from
 calc (-s₂) ∩ c = c ∩ (-s₂) : by rw [inter_comm]
@@ -492,7 +500,7 @@ subset_separation_left_inter_closed (subset_sep_symm sep) ‹is_closed c› ‹c
 
 set_option eqn_compiler.zeta true
 
-instance interval_of_connected {i : set ℝ} (_ : interval i) : connected_space i :=
+instance connected_of_interval {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
 assume h : disconnected_subset i,
   let ⟨s₁, s₂, sep⟩ := h in
@@ -571,7 +579,7 @@ assume h : disconnected_subset i,
         not_le_of_gt ‹inf > z› ‹inf ≤ z›)
   end
 
-theorem connected_of_interval {i : set ℝ} [connected_space i] : interval i :=
+theorem interval_of_connected {i : set ℝ} [connected_space i] : interval i :=
 by intros x y z _ _ _ _;
 exact
   classical.by_cases
