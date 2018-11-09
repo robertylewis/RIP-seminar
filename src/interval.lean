@@ -240,7 +240,7 @@ iff.intro
     ⟨-y,
     assume x,
     assume _ : x ∈ {x | -x ∈ S},
-    have -x ∈ S, from mem_iff_neg_mem.mpr ‹x ∈ {y | -y ∈ S}›,
+    have -x ∈ S, by rwa [mem_iff_neg_mem],
     neg_neg x ▸ neg_le_neg (h (-x) ‹-x ∈ S›)⟩)
   (assume ⟨y, h⟩, --{x | -x ∈ S} is bounded from above by y
     ⟨-y,
@@ -302,25 +302,25 @@ subset_separation_left_inter_closed (subset_sep_symm sep) ‹is_closed c› ‹c
 
 set_option eqn_compiler.zeta true
 
+-- An convex subset of ℝ is connected in the subspace topology
 instance connected_of_interval {i : set ℝ} (_ : interval i) : connected_space i :=
 subtype_connected_iff_subset_connected.mpr $
-assume h : disconnected_subset i,
-  let ⟨s₁, s₂, sep⟩ := h in
-  let ⟨_, _, _, _, _, _⟩ := sep in
-  let ⟨a, _⟩ := exists_mem_of_ne_empty ‹s₁ ∩ i ≠ ∅›, ⟨b, _⟩ := exists_mem_of_ne_empty ‹s₂ ∩ i ≠ ∅› in
-  have a ∈ s₁, from mem_of_mem_inter_left ‹a ∈ s₁ ∩ i›,
-  have a ∈ i, from mem_of_mem_inter_right ‹a ∈ s₁ ∩ i›,
-  have b ∈ s₂, from mem_of_mem_inter_left ‹b ∈ s₂ ∩ i›,
-  have b ∈ i, from mem_of_mem_inter_right ‹b ∈ s₂ ∩ i›,
-  have a ≠ b, from
-    (assume _ : a = b,
-    have b ∈ s₁ ∩ s₂ ∩ i, from ⟨⟨‹a = b› ▸ ‹a ∈ s₁›, ‹b ∈ s₂›⟩, ‹b ∈ i›⟩,
-    show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ ∩ i = ∅› b ‹b ∈ s₁ ∩ s₂ ∩ i›),
-  begin
-    --wlog : a < b using [a b, b a],
-    --exact ne_iff_lt_or_gt.mp ‹a ≠ b›,
-    exact
-      have a < b, from sorry, --wlog in
+-- assume that i is not connected, then there exists a separation
+assume _ : disconnected_subset i,
+  have ∃ (s₁ : set ℝ) (s₂ : set ℝ) (a ∈ s₁ ∩ i) (b ∈ s₂ ∩ i), a < b ∧ subset_separation i s₁ s₂,
+    from (
+      let ⟨s₁, s₂, sep⟩ := ‹disconnected_subset i›,
+          ⟨_, _, _, _, _, _⟩ := sep,
+          ⟨a, _⟩ := exists_mem_of_ne_empty ‹s₁ ∩ i ≠ ∅›,
+          ⟨b, _⟩ := exists_mem_of_ne_empty ‹s₂ ∩ i ≠ ∅› in
+      have a ≠ b, from (assume _ : a = b,
+      have b ∈ s₁ ∩ s₂ ∩ i, from ⟨⟨‹a = b› ▸ (‹a ∈ s₁ ∩ i›.1), (‹b ∈ s₂ ∩ i›).1⟩, (‹b ∈ s₂ ∩ i›.2)⟩,
+      show false, from eq_empty_iff_forall_not_mem.1 ‹s₁ ∩ s₂ ∩ i = ∅› b ‹b ∈ s₁ ∩ s₂ ∩ i›),
+      or.elim (ne_iff_lt_or_gt.mp ‹a ≠ b›)
+        (assume _, ⟨s₁, s₂, a, ‹_›, b, ‹_›, ⟨‹_›, sep⟩⟩)
+        (assume _, ⟨s₂, s₁, b, ‹_›, a, ‹_›, ⟨‹_›, subset_sep_symm sep⟩⟩)),
+  let ⟨s₁, s₂, a, ⟨_, _⟩, b, ⟨_, _⟩, ⟨(_ : a < b), sep⟩⟩ := this,
+      ⟨_, _, _, _, _, _⟩ := sep in
       have Icc a b ⊆ i, from
         (suffices (∀x, x ∈ Icc a b → x ∈ i), by simpa only [subset_def],
         assume x,
@@ -361,9 +361,7 @@ assume h : disconnected_subset i,
         have inf ∈ s₁ ∩ s₂ ∩ i, from ⟨⟨mem_of_mem_inter_left ‹inf ∈ s₁'›, mem_of_mem_inter_left $ mem_of_mem_inter_left ‹inf ∈ s₂''›⟩, ‹inf ∈ i›⟩,
         show false, from mem_empty_eq inf ▸ ‹s₁ ∩ s₂ ∩ i = ∅› ▸ ‹inf ∈ s₁ ∩ s₂ ∩ i›),
       
-      let ⟨z, _⟩ := exists_real_between ‹sup < inf› in
-      have sup < z, from ‹sup < z ∧ z < inf›.left,
-      have z < inf, from ‹sup < z ∧ z < inf›.right,
+      let ⟨z, ⟨(_ : sup < z), (_ : z < inf)⟩⟩ := exists_real_between ‹sup < inf› in
       have z ∈ Ioo sup inf, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
       have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
       have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
@@ -379,7 +377,9 @@ assume h : disconnected_subset i,
         have z ∈ s₂'', from mem_inter ‹z ∈ s₂'› $ and.intro (le_of_lt ‹sup < z›) ‹z ≤ b›,
         have z ≥ inf, from real.Inf_le s₂'' ‹bdd_below s₂''› ‹z ∈ s₂''›,
         not_le_of_gt ‹inf > z› ‹inf ≤ z›)
-  end
+
+
+
 
 theorem interval_of_connected {i : set ℝ} [connected_space i] : interval i :=
 by intros x y z _ _ _ _;
