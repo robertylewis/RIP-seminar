@@ -28,7 +28,6 @@ def Iic (a : α) := {x | x ≤ a}
 /-- Left-open right-infinite interval -/
 def Ioi (b : α) := {x | b < x}
 
-
 lemma Iio_inter_Ioi_empty {b : ℝ} : Iio b ∩ Ioi b = ∅ :=
 classical.by_contradiction
     (assume h : Iio b ∩ Ioi b ≠ ∅,
@@ -37,36 +36,43 @@ classical.by_contradiction
     have b < x, from mem_of_mem_inter_right ‹x ∈ Iio b ∩ Ioi b›,
     show false, from not_le_of_lt ‹x < b› (le_of_lt ‹b < x›))
 
-lemma neg_Ioi_eq_Iio {b : ℝ} : (λ (x : ℝ), -x)⁻¹' (Iio (-b)) = Ioi b := sorry
+lemma neg_Ioi_eq_Iio (b : ℝ) : (λ (x : ℝ), -x)⁻¹' (Iio (-b)) = Ioi b :=
+by simp [Iio, Ioi]
 
 lemma is_open_Ioi {b : ℝ} : is_open (Ioi b) :=
 let neg := λ (x : ℝ), -x in
 have continuous neg, from topological_ring.continuous_neg ℝ,
-@neg_Ioi_eq_Iio b ▸ ‹continuous neg› (Iio (-b)) is_open_Iio
+neg_Ioi_eq_Iio b ▸ ‹continuous neg› (Iio (-b)) is_open_Iio
 
-
+local attribute [instance] classical.prop_decidable
 --Classification of bounded above intervals
 lemma exists_smaller_of_not_bounded_below {i : set ℝ} (_ : ¬bdd_below i) (x : ℝ) : ∃ y ∈ i, y ≤ x :=
-have h : ∀ y, ¬∀ z ∈ i, y ≤ z, by rw [←not_exists]; assumption,
+have h : ∀ y, ¬∀ z ∈ i, y ≤ z, by simpa [bdd_below] using ‹¬bdd_below i›,
 have ¬∀ z ∈ i, x ≤ z, from h x,
-have ∃ z, ¬(z ∈ i → x ≤ z), by rw [←classical.not_forall]; assumption,
+have ∃ z, ¬(z ∈ i → x ≤ z), by simpa [classical.not_forall],
 let ⟨z, h1⟩ := this in
-have h2 : z ∈ i ∧ ¬x ≤ z, from (@not_imp _ _ (classical.dec (z ∈ i))).mp h1,
-⟨z, h2.left, le_of_not_le h2.right⟩ 
+have h2 : z ∈ i ∧ ¬x ≤ z, from not_imp.mp h1,
+⟨z, h2.left, le_of_not_le h2.right⟩
 
-lemma exists_real_between {x y : ℝ} (_ : x < y) : ∃z, x < z ∧ z < y :=
+#check dense
+-- this is dense
+/-lemma exists_real_between {x y : ℝ} : x < y → ∃z, x < z ∧ z < y :=
 suffices Ioo x y ≠ ∅, from exists_mem_of_ne_empty this,
-mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < y›)
+mt Ioo_eq_empty_iff.mp (not_le_of_lt ‹x < y›)-/
 
-theorem exists_inf (S : set ℝ) : (∃ x, x ∈ S) → (∃ x, ∀ y ∈ S, x ≤ y) →
-  ∃ x, ∀ y, y ≤ x ↔ ∀ z ∈ S, y ≤ z := sorry
+
+#check real.Inf
+
+/-theorem exists_inf (S : set ℝ) : (∃ x, x ∈ S) → (∃ x, ∀ y ∈ S, x ≤ y) →
+  ∃ x, ∀ y, y ≤ x ↔ ∀ z ∈ S, y ≤ z
+| ⟨x, hx⟩ ⟨x', hx'⟩ := _-/
 
 lemma mem_nbhd_sup_of_right_open {i : set ℝ} {x sup : ℝ} (_ : sup ∉ i) (_ : x < sup)
   (bound_iff_ge_sup : ∀ b, sup ≤ b ↔ ∀ y ∈ i, y ≤ b) : ∃ z ∈ i, x ≤ z :=
 have le_sup : ∀ x ∈ i, x ≤ sup, from (bound_iff_ge_sup sup).mp (le_refl sup),
 have i ∩ Ioo x sup ≠ ∅, from
   assume _ : i ∩ Ioo x sup = ∅, --show that a smaller supremum exists
-  let ⟨sup2, _⟩ := exists_real_between ‹x < sup› in
+  let ⟨sup2, _⟩ := dense ‹x < sup› in
   have ∀ z ∈ i, z ≤ sup2, from
     assume z,
     assume _ : z ∈ i,
@@ -96,11 +102,22 @@ iff.intro
     real.exists_sup i (set.exists_mem_of_ne_empty ‹i ≠ ∅›) ‹bdd_above i›,
   let ⟨sup, bound_iff_ge_sup⟩ := this in
   have le_sup : ∀ x ∈ i, x ≤ sup, from (bound_iff_ge_sup sup).mp $ le_refl sup,
-  ⟨sup, classical.by_cases
-    (assume _ : bdd_below i, /-left-bounded cases-/
-    have ∃ inf, ∀ bound, bound ≤ inf ↔ ∀ x ∈ i, bound ≤ x, from
-      exists_inf i (set.exists_mem_of_ne_empty ‹i ≠ ∅›) ‹bdd_below i›,
-    let ⟨inf, bound_iff_le_inf⟩ := this in
+  let inf := real.Inf i in
+  ⟨sup,
+   match classical.prop_decidable (bdd_below i), classical.prop_decidable (inf ∈ i), classical.prop_decidable (sup ∈ i) with
+   | is_true _, is_true _, is_true _ := or.inr $ or.inr $ ⟨inf, or.inl $ ext _ ⟩
+   | is_true _, is_false _, is_true _ := or.inr $ or.inr $ ⟨inf, or.inr $ or.inl _ ⟩
+   | is_true _, is_true _, is_false _ := or.inr $ or.inr $ ⟨inf, or.inr $ or.inr $ or.inl $ _ ⟩
+   | is_true _, is_false _, is_false _ := or.inr $ or.inr $ ⟨inf, or.inr $ or.inr $ or.inr $ _ ⟩
+   | is_false _, _, is_true _ := or.inl $ _
+   | is_false _, _, is_false _ := or.inr $ or.inl $ _
+   end ⟩)
+/-   if h : bdd_below i then /-left-bounded cases-/ (
+    /- have ∃ inf, ∀ bound, bound ≤ inf ↔ ∀ x ∈ i, bound ≤ x, from
+      exists_inf i (set.exists_mem_of_ne_empty ‹i ≠ ∅›) ‹bdd_below i›, -/
+    let inf := real.Inf i in
+    have bound_iff_le_inf : ∀ bound, bound ≤ inf ↔ ∀ x ∈ i, bound ≤ x, from
+      λ bound, real.le_Inf _ (set.exists_mem_of_ne_empty ‹i ≠ ∅›) ‹bdd_below i›,
     have ge_inf : ∀ x ∈ i, inf ≤ x, from (bound_iff_le_inf inf).mp $ le_refl inf,
     or.intro_right (i = Iic sup) $ or.intro_right (i = Iio sup)
     ⟨inf, classical.by_cases
@@ -148,7 +165,7 @@ iff.intro
             let ⟨z1, _, _⟩ := mem_nbhd_inf_of_left_open ‹inf ∉ i› ‹inf < x ∧ x < sup›.left bound_iff_le_inf in
             let ⟨z2, _, _⟩ := mem_nbhd_sup_of_right_open ‹sup ∉ i› ‹inf < x ∧ x < sup›.right bound_iff_ge_sup in
             ‹interval i› z1 x z2 ‹z1 ∈ i› ‹z2 ∈ i› ‹z1 ≤ x› ‹x ≤ z2›),
-        by simp [this]))⟩)
+        by simp [this])⟩)
     (assume _ : ¬bdd_below i, /-left-infinite cases-/
     classical.by_cases
       --left-infinite right-closed case
@@ -172,7 +189,7 @@ iff.intro
           (assume _ : x ∈ Iio sup,
           let ⟨z, _, _⟩ := mem_nbhd_sup_of_right_open ‹sup ∉ i› ‹x < sup› bound_iff_ge_sup in
           ‹interval i› y x z ‹y ∈ i› ‹z ∈ i› ‹y ≤ x› ‹x ≤ z›),
-      by simp [this]))⟩) --add the large disjunction
+      by simp [this]))⟩) --add the large disjunction -/
   --(begin
   --intros h,
   --cases h with b h1,
@@ -213,10 +230,10 @@ classical.by_contradiction
         absurd this ‹¬(sup ≤ sup - ε)›,
       assume x (_ : x ∈ S),
       classical.by_contradiction
-        (assume : ¬ x ≤ sup - ε, 
+        (assume : ¬ x ≤ sup - ε,
           have x ≤ sup, from (bound_iff_ge_sup sup).mp (le_refl sup) x ‹x ∈ S›,
           have 0 ≤ sup - x, by linarith,
-          have dist x sup < ε, from 
+          have dist x sup < ε, from
             calc dist x sup = abs (sup - x) : by rw[dist_comm x sup]; refl
                         ... = sup - x : abs_of_nonneg ‹0 ≤ sup - x›
                         ... < ε : by linarith,
@@ -229,7 +246,7 @@ let ⟨max, (_ : max ∈ S), max_upper_bound⟩ := this in
 have max ≤ real.Sup S, from real.le_Sup S ‹bdd_above S› ‹max ∈ S›,
 have real.Sup S ≤ max, from (real.Sup_le S (set.exists_mem_of_ne_empty ‹S ≠ ∅›) ‹bdd_above S›).mpr max_upper_bound,
 have max = real.Sup S, from le_antisymm ‹max ≤ real.Sup S› ‹real.Sup S ≤ max›,
-show real.Sup S ∈ S, from ‹max = real.Sup S› ▸ ‹max ∈ S› 
+show real.Sup S ∈ S, from ‹max = real.Sup S› ▸ ‹max ∈ S›
 
 lemma mem_iff_neg_mem {S : set ℝ} {x : ℝ} : -x ∈ S ↔ x ∈ {y | -y ∈ S} :=
 by rw mem_set_of_eq
@@ -303,7 +320,7 @@ subset_separation_left_inter_closed (subset_sep_symm sep) ‹is_closed c› ‹c
 set_option eqn_compiler.zeta true
 
 -- An convex subset of ℝ is connected in the subspace topology
-instance connected_of_interval {i : set ℝ} (_ : interval i) : connected_space i :=
+instance connected_of_interval {i : set ℝ} (_ : interval i) : connected_space' i :=
 subtype_connected_iff_subset_connected.mpr $
 -- assume that i is not connected, then there exists a separation
 assume _ : disconnected_subset i,
@@ -324,7 +341,7 @@ assume _ : disconnected_subset i,
       have Icc a b ⊆ i, from
         (suffices (∀x, x ∈ Icc a b → x ∈ i), by simpa only [subset_def],
         assume x,
-        assume _ : x ∈ Icc a b, 
+        assume _ : x ∈ Icc a b,
         have hab : a ≤ x ∧ x ≤ b, from mem_set_of_eq.mp ‹x ∈ Icc a b›,
         show x ∈ i, from ‹interval i› a x b ‹a ∈ i› ‹b ∈ i› hab.1 hab.2),
       let s₁' := s₁ ∩ Icc a b, s₂' := s₂ ∩ Icc a b in
@@ -360,8 +377,8 @@ assume _ : disconnected_subset i,
         have inf ∈ s₁', from ‹sup = inf› ▸ ‹sup ∈ s₁'›,
         have inf ∈ s₁ ∩ s₂ ∩ i, from ⟨⟨mem_of_mem_inter_left ‹inf ∈ s₁'›, mem_of_mem_inter_left $ mem_of_mem_inter_left ‹inf ∈ s₂''›⟩, ‹inf ∈ i›⟩,
         show false, from mem_empty_eq inf ▸ ‹s₁ ∩ s₂ ∩ i = ∅› ▸ ‹inf ∈ s₁ ∩ s₂ ∩ i›),
-      
-      let ⟨z, ⟨(_ : sup < z), (_ : z < inf)⟩⟩ := exists_real_between ‹sup < inf› in
+
+      let ⟨z, ⟨(_ : sup < z), (_ : z < inf)⟩⟩ := dense ‹sup < inf› in
       have z ∈ Ioo sup inf, from mem_set_of_eq.mp (and.intro ‹sup < z› ‹z < inf›),
       have z ∈ i, from ‹interval i› sup z inf ‹sup ∈ i› ‹inf ∈ i› (le_of_lt ‹sup < z›) (le_of_lt ‹z < inf›),
       have z ∈ s₁ ∪ s₂, from mem_of_subset_of_mem ‹i ⊆ s₁ ∪ s₂› ‹z ∈ i›,
@@ -381,7 +398,7 @@ assume _ : disconnected_subset i,
 
 
 
-theorem interval_of_connected {i : set ℝ} [connected_space i] : interval i :=
+theorem interval_of_connected {i : set ℝ} [connected_space' i] : interval i :=
 by intros x y z _ _ _ _;
 exact
   classical.by_cases
@@ -408,8 +425,8 @@ exact
     have Iio y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹x < y› ‹x ∈ i›),
     have Ioi y ∩ i ≠ ∅, from ne_empty_of_mem (mem_inter ‹y < z› ‹z ∈ i›),
     have disconnected_subset i, from ⟨Iio y, Ioi y, is_open_Iio, is_open_Ioi, ‹Iio y ∩ i ≠ ∅›, ‹Ioi y ∩ i ≠ ∅›, ‹Iio y ∩ Ioi y ∩ i = ∅›, ‹i ⊆ Iio y ∪ Ioi y›⟩,
-    have ¬connected_space i, by simpa [subtype_connected_iff_subset_connected],
-    this ‹connected_space i›))
+    have ¬connected_space' i, by simpa [subtype_connected_iff_subset_connected],
+    this ‹connected_space' i›))
 
 
 end real

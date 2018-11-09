@@ -51,15 +51,14 @@ have he1 : -s₂ = s₁, from eq.symm (sep_neg h),
 have he2 : -s₁ = s₂, from eq.symm (sep_neg (sep_symm h)),
 ⟨he1 ▸ is_closed_compl_iff.mpr ho2, he2 ▸ is_closed_compl_iff.mpr ho1⟩
 
-
 --Connected topological spaces
-class connected_space (α) [topological_space α] : Prop :=
+class connected_space' (α) [topological_space α] : Prop :=
 (connected : ¬∃ s₁ s₂ : set α, separation s₁ s₂)
 
 /-- The image of a connected space under a surjective map is connected. -/
-theorem im_connected {f : α → β} [connected_space α]
-  (_ : continuous f) (_ : surjective f) : connected_space β :=
-connected_space.mk $
+theorem im_connected {f : α → β} [connected_space' α]
+  (_ : continuous f) (_ : surjective f) : connected_space' β :=
+connected_space'.mk $
 -- a space is connected if there exists no separation, so we assume there is one and derive false
 -- we do this by constructing a 'preimage separation'
 assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
@@ -77,7 +76,7 @@ assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
   -- with this preparation at hand, we construct a separation
   have separation s₁ s₂, from ⟨‹is_open s₁›, ‹is_open s₂›, ‹s₁ ≠ ∅›, ‹s₂ ≠ ∅›, ‹s₁ ∩ s₂ = ∅›, ‹s₁ ∪ s₂ = univ›⟩,
   -- which contradicts the fact that α is connected
-  show false, from connected_space.connected α
+  show false, from connected_space'.connected α
     ⟨s₁, s₂, ‹separation s₁ s₂›⟩
 
 --- Usefull lemma's about the inclusion map
@@ -118,7 +117,7 @@ let ⟨ho1, ho2, hne1, hne2, hce, huu⟩ := h in
 ⟨ho2, ho1, hne2, hne1, (inter_comm s₁ s₂) ▸ hce, (union_comm s₁ s₂) ▸ huu⟩
 
 lemma sep_of_subset_sep {s s₁ s₂ : set α} :
-  subset_separation s s₁ s₂ → @separation s _ (subtype.val⁻¹' s₁) (subtype.val⁻¹' s₂) := 
+  subset_separation s s₁ s₂ → @separation s _ (subtype.val⁻¹' s₁) (subtype.val⁻¹' s₂) :=
 let lift := @subtype.val _ s in
 assume h : subset_separation s s₁ s₂,
 let ⟨_, _, _, _, _, _⟩ := h in
@@ -175,16 +174,16 @@ def disconnected_subset (s : set α) : Prop :=
 def connected_subset (s : set α) : Prop :=
 ¬(disconnected_subset s)
 
-lemma connected_space_iff : connected_space α ↔ ¬∃ s₁ s₂ : set α, separation s₁ s₂ :=
+lemma connected_space'_iff : connected_space' α ↔ ¬∃ s₁ s₂ : set α, separation s₁ s₂ :=
 begin
   constructor,
-  apply connected_space.connected,
-  apply connected_space.mk
+  apply connected_space'.connected,
+  apply connected_space'.mk
 end
 
-theorem subtype_connected_iff_subset_connected {s : set α} : connected_space s ↔ connected_subset s :=
+theorem subtype_connected_iff_subset_connected {s : set α} : connected_space' s ↔ connected_subset s :=
 suffices h₀ : (∃ s₁ s₂ : set s, separation s₁ s₂) ↔ disconnected_subset s,
-  by rw connected_space_iff; apply not_iff_not_of_iff; assumption,
+  by rw connected_space'_iff; apply not_iff_not_of_iff; assumption,
 let lift := @subtype.val α s in
 iff.intro
   (assume h : ∃ s₁ s₂ : set s, separation s₁ s₂,
