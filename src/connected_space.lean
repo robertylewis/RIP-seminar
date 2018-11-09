@@ -15,7 +15,7 @@ section connected
 variables {α: Type u} {β : Type v} {a : α} {b : β} {s s₁ s₂ : set α} {r r₁ r₂ : set β} {f : α → β}
 
 variables [topological_space α]
-variables [t' : topological_space β]
+variables [topological_space β]
 
 lemma preimage_empty_of_empty {f : α → β} {r : set β} (hf : surjective f): f⁻¹' r = ∅ → r = ∅ :=
 suffices (∀a, a ∉ f ⁻¹' r) → ∀b, b ∉ r,
@@ -57,7 +57,7 @@ class connected_space (α) [topological_space α] : Prop :=
 (connected : ¬∃ s₁ s₂ : set α, separation s₁ s₂)
 
 /-- The image of a connected space under a surjective map is connected. -/
-theorem im_connected {α β} {f : α → β} [topological_space α] [topological_space β] [connected_space α]
+theorem im_connected {f : α → β} [connected_space α]
   (_ : continuous f) (_ : surjective f) : connected_space β :=
 connected_space.mk $
 -- a space is connected if there exists no separation, so we assume there is one and derive false
@@ -81,38 +81,29 @@ assume _ : ∃ r₁ r₂ : set β, separation r₁ r₂,
     ⟨s₁, s₂, ‹separation s₁ s₂›⟩
 
 --- Usefull lemma's about the inclusion map
+lemma image_preimage_subtype_val {s : set α} (t : set α) :
+  subtype.val '' (@subtype.val α s ⁻¹' t) = s ∩ t :=
+begin
+  rw [image_preimage_eq_inter_range, inter_comm, subtype_val_range],
+  exact set_of_mem,
+end
+
 lemma subtype_val_univ_eq (s : set α) : (subtype.val) '' (@univ s) = s :=
 calc
   subtype.val '' (@univ s) = range subtype.val : image_univ
                        ... = s                 : subtype_val_range
 
-lemma preimage_subtype_val_eq_univ (s : set α) : @univ s = (subtype.val) ⁻¹' s :=
+lemma preimage_subtype_val_eq_univ (s : set α) : @univ s = (@subtype.val _ s) ⁻¹' s :=
 let lift := @subtype.val α s in
-have @univ s ⊆ lift ⁻¹' s, from
-  (assume x : s,
-   assume _ : x ∈ @univ s,
-   have lift x ∈ range lift, from ⟨x, eq.refl (lift x)⟩,
-   have lift x ∈ s, by rw [←(@set_of_mem _ s), ←subtype_val_range]; assumption,
-   show x ∈ lift ⁻¹' s, from ‹lift x ∈ s›
-  ),
-have lift ⁻¹' s ⊆ @univ s, from subset_univ (lift ⁻¹' s),
-show @univ s = (subtype.val) ⁻¹' s, from eq_of_subset_of_subset ‹@univ s ⊆ lift ⁻¹' s› ‹lift ⁻¹' s ⊆ @univ s›
-
-lemma image_preimage_subtype_val {s : set α} (t : set α) :
-  subtype.val '' (@subtype.val α s ⁻¹' t) = s ∩ t :=
-begin
-  rw [image_preimage_eq_inter_range],
-  rw [inter_comm],
-  rw subtype_val_range,
-  exact set_of_mem,
-end
+calc
+  @univ s = lift ⁻¹' univ                      : by rw set.preimage_univ
+      ... = lift ⁻¹' (lift '' (lift ⁻¹' univ)) : by rw set.preimage_image_preimage
+      ... = lift ⁻¹' (s ∩ univ)                : by rw image_preimage_subtype_val
+      ... = lift ⁻¹' s                         : by rw inter_univ s
 
 lemma preimage_subtype_val_empty_iff {s : set α} (t : set α) :
   @subtype.val α s ⁻¹' t = ∅ ↔ s ∩ t = ∅ :=
-begin
-  rw ←image_preimage_subtype_val,
-  rw image_eq_empty,
-end
+by rw [←image_preimage_subtype_val, image_eq_empty]
 
 lemma preimage_subtype_val_ne_empty_iff {s : set α} (t : set α) :
   @subtype.val α s ⁻¹' t ≠ ∅ ↔ s ∩ t ≠ ∅ :=
